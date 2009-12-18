@@ -52,6 +52,7 @@ class Briefcase:
             md4 = MD4.new(password)
             self.pwd = password #md4.hexdigest()
             del md4
+            # Prv table contains the password and the original names of the files.
             self.c.execute('create table prv (pwd TEXT unique, file TEXT)')
             self.c.execute('insert into prv (pwd) values (?)', [self.pwd])
             self.conn.commit()
@@ -123,18 +124,17 @@ class Briefcase:
             return 1
 
         self.c.execute(('insert into %s (raw, hash) values (?,?)' % filename), [raw, hash])
-        self.c.execute('insert or abort into prv (file) values (?)',
-            [os.path.split(fpath.lower())[1]])
+        self.c.execute('insert or abort into prv (file) values (?)', [os.path.split(fpath)[1]])
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
-        print('Added file "%s" version "%i" in %.4f sec.' % (filepath, ver_max[0], clock()-ti))
+        print('Adding file "%s" version "%i" took %.4f sec.' % (filepath, ver_max[0], clock()-ti))
         return 0
 
 
     def AddManyFiles(self, pathregex, versionable=True):
         '''
-        Add more files, using patterns. \n\
+        Add more files, using a pattern. \n\
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Versionable=False checks if the file is in the database. If it is, an error is raised
         and the file is not added. \n\
@@ -161,10 +161,40 @@ class Briefcase:
 
     def CopyIntoNew(self, fname, version, new_fname):
         '''
-        TODO
         Copy one version of one file, into a new file, that will have version 1.
         '''
-        pass
+        ti = clock()
+        if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
+            or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
+            or ('|' in new_fname):
+            print('A filename cannot contain any of the following characters  \\ / : * ? " < > | .'
+                'Cannot copy file.')
+            return 1
+
+        md4 = MD4.new( fname.lower() )
+        filename = 't'+md4.hexdigest()
+        del md4
+        md4 = MD4.new( new_fname.lower() )
+        new_filename = 't'+md4.hexdigest()
+        del md4
+
+        if self.c.execute('select * from prv where file="%s"' % (new_fname.lower())).fetchone():
+            print('There is already a file called "%s"! Cannot copy file.' % new_fname)
+            return 1
+
+        try:
+            data = self.c.execute('select raw, hash from %s where version=%i' %
+                (filename, version)).fetchone()
+            self.c.execute('create table %s (version integer primary key asc, raw blob, hash text)' %
+                new_filename)
+            self.c.execute(('insert into %s (raw, hash) values (?,?)' % new_filename),
+                [data[0], data[1]])
+            self.c.execute('insert into prv (file) values (?)', [new_fname.lower()])
+            print('Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
+            return 0
+        except:
+            print('Cannot find the file called "%s"! Failed to copy.' % fname)
+            return 1
 
 
     def GetVersion(self, fname):
@@ -292,13 +322,17 @@ class Briefcase:
         new_filename = 't'+md4.hexdigest()
         del md4
 
+        if self.c.execute('select * from prv where file="%s"' % (new_fname.lower())).fetchone():
+            print('There is already a file called "%s"! Cannot rename file.' % new_fname)
+            return 1
+
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
             self.c.execute('update prv set file="%s" where file="%s"' % (new_filename, filename))
             print( 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti) )
             return 0
         except:
-            print('Cannot find the file called "%s"!' % fname)
+            print('Cannot find the file called "%s"! Failed to rename.' % fname)
             return 1
 
 
@@ -312,14 +346,14 @@ class Briefcase:
         filename = 't'+md4.hexdigest()
         del md4
 
-        if version and version > 0:
+        if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
-            print( 'Deleted file "%s" version "%i" in %.4f sec.' % (fname, version, clock()-ti) )
+            print( 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti) )
         else:
             self.c.execute('drop table if exists %s' % filename)
             self.c.execute('delete from prv where file="%s"' % fname.lower())
-            print( 'Deleted file "%s" in %.4f sec.' % (fname, clock()-ti) )
+            print( 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti) )
 
         self.conn.commit()
         return 0
