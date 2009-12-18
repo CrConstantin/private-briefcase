@@ -1,7 +1,7 @@
 # -*- coding: latin-1 -*-
 
 '''
-    Briefcase Projekt v1.0 \n\
+    Briefcase-Project v1.0 \n\
     Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
     This module contains Briefcase class with all its functions. \n\
     Tested on Windows XP, with Python 2.6. \n\
@@ -80,11 +80,11 @@ class Briefcase:
 
     def AddFile(self, filepath, versionable=True):
         '''
-        If table doesn't exist, create the table. If table exists, add another row. \n\
+        If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Table name is MD4 Hexdigest of the file name (lower case). \n\
         Each row contains : Version, Raw-data, Hash of original data. \n\
         Raw-data is : original binary data -> crypted -> compressed. \n\
-        Versionable=False checks if the file is in the database. If it, an error is raised
+        Versionable=False checks if the file is in the database. If it is, an error is raised
         and the file is not added. \n\
         '''
         ti = clock()
@@ -132,12 +132,31 @@ class Briefcase:
         return 0
 
 
-    def AddManyFiles(self, path, extensions, recursive, versionable=True):
+    def AddManyFiles(self, pathregex, versionable=True):
         '''
-        TODO
-        Add more files, using patterns.
+        Add more files, using patterns. \n\
+        If file doesn't exist in database, create the file. If file exists, add another row. \n\
+        Versionable=False checks if the file is in the database. If it is, an error is raised
+        and the file is not added. \n\
         '''
-        pass
+        ti = clock()
+        path = os.path.split(pathregex)[0]
+        pathreg = pathregex.replace('[', '[[]') # Fix possible bug in Windows ?
+
+        if not os.path.exists(path):
+            print('Path "%s" doesn\'t exist! Cannot add files!' % path)
+            return 1
+
+        files = glob.glob(pathreg)
+
+        if not len(files):
+            print('There are no files to match "%s"! Cannot add files!' % pathregex)
+            return 1
+        for file in files:
+            self.AddFile(file, versionable)
+
+        print('Added %i files in %.4f sec.' % (len(files), clock()-ti))
+        return 0
 
 
     def CopyIntoNew(self, fname, version, new_fname):
@@ -168,7 +187,7 @@ class Briefcase:
             return -1
 
 
-    def ExportFile(self, fname, path='', version=0, execute=True):
+    def ExportFile(self, fname, path='', version=0, execute=False):
         '''
         Call one file from the briefcase. \n\
         If version is not null, that specific version is used. Else, it's the most recent version. \n\
