@@ -9,7 +9,8 @@
 '''
 
 # Standard libraries.
-import os, shutil
+import os, sys
+import shutil
 import glob
 import sqlite3
 import zlib
@@ -20,6 +21,9 @@ from time import clock
 # External dependency.
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
+
+__version__ = '1.0'
+__all__ = ['Briefcase']
 
 
 class Briefcase:
@@ -50,7 +54,7 @@ class Briefcase:
                 return -1
         else:
             md4 = MD4.new(password)
-            self.pwd = password #md4.hexdigest()
+            self.pwd = md4.hexdigest()
             del md4
             # Prv table contains the password and the original names of the files.
             self.c.execute('create table prv (pwd TEXT unique, file TEXT)')
@@ -199,9 +203,9 @@ class Briefcase:
 
     def GetVersion(self, fname):
         '''
-        Return an integer, representing the most recent version of the file. \n\
-        All versions, from 1, to this number must be valid. \n\
-        When a version is deleted, the file table is re-indexed. \n\
+        Returns an integer, representing the most recent version of the file. \n\
+        All versions, from 1, to this number must be valid,
+        because when a version is deleted, the file table is re-indexed. \n\
         '''
         md4 = MD4.new( fname.lower() )
         filename = 't'+md4.hexdigest()
@@ -221,8 +225,8 @@ class Briefcase:
         '''
         Call one file from the briefcase. \n\
         If version is not null, that specific version is used. Else, it's the most recent version. \n\
-        If execute is false, the file is simply exported into the specified path.
-        Else, the file is executed from a temporary folder, then the folder is deleted. \n\
+        If execute is false, the file is simply exported into the specified path. Else, the file
+        is executed from a temporary folder, or from the specified path, then the file is deleted. \n\
         '''
         ti = clock()
         md4 = MD4.new( fname.lower() )
@@ -230,7 +234,7 @@ class Briefcase:
         del md4
 
         # If version is a positive number, get that version.
-        if version and version > 0:
+        if version > 0:
             try:
                 selected_version = self.c.execute('select raw from %s order by version desc where '
                     ' version=%s' % (filename, version)).fetchone()
@@ -252,6 +256,10 @@ class Briefcase:
                 print('Cannot find the file called "%s"! Cannot execute.' % fname)
                 return 1
 
+        if path and not os.path.exists(path):
+            print('Path "%s" doesn\'t exist! Cannot export file!' % path)
+            return 1
+
         # If the path is specified, use it. Else, use a temp dir.
         if path:
             filename = path + '\\' + fname
@@ -263,7 +271,7 @@ class Briefcase:
         w = open(filename, 'wb')
         w.write(self._restoreb(selected_version[0]))
         w.close() ; del w
-        print( 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti) )
+        print('Exporting file "%s" took %.4f sec.' % (fname, clock()-ti))
 
         # If execute, call the file, then delete it.
         if execute:
@@ -299,13 +307,13 @@ class Briefcase:
             w.write(self._restoreb(latest_version[0]))
             w.close()
 
-        print( 'Exporting all files took %.4f sec.' % (clock()-ti) )
+        print('Exporting all files took %.4f sec.' % (clock()-ti))
         return 0
 
 
     def RenFile(self, fname, new_fname):
         '''
-        Rename one file. This cannot be undone.
+        Rename one file. This cannot be undone, so be careful.
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
@@ -329,7 +337,7 @@ class Briefcase:
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
             self.c.execute('update prv set file="%s" where file="%s"' % (new_filename, filename))
-            print( 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti) )
+            print('Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
             return 0
         except:
             print('Cannot find the file called "%s"! Failed to rename.' % fname)
@@ -340,6 +348,7 @@ class Briefcase:
         '''
         If version is a positive number, only that version of the file is deleted. \n\
         Else, the entire table is dropped. \n\
+        This cannot be undone, so be careful. \n\
         '''
         ti = clock()
         md4 = MD4.new( fname.lower() )
@@ -349,17 +358,44 @@ class Briefcase:
         if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
-            print( 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti) )
+            print('Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti))
         else:
             self.c.execute('drop table if exists %s' % filename)
             self.c.execute('delete from prv where file="%s"' % fname.lower())
-            print( 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti) )
+            print('Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
 
         self.conn.commit()
         return 0
 
 
 #
+
+
+if __name__ == '__main__':
+
+    if not sys.argv[1:]:
+        print('You must specify 3 arguments. Try "-h" parameter to see the complete list of commands.')
+        exit(1)
+
+    from optparse import OptionParser
+    usage = "Usage: %prog --db <briefcase-file> --pwd <password> --command <arguments>"
+    parser = OptionParser(usage=usage)
+
+    parser.add_option("-b", "-q", "--brief", "--quiet", dest="verbose", action="store_false", default=False, help="Prints the version.")
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=True, help="Prints the version.")
+    parser.add_option("--db", dest="database", help="The name of the briefcase file.")
+    parser.add_option("--pwd", "--pass", dest="password", help="The password of the briefcase file.")
+    parser.add_option("--addfile", action="store", nargs=2, help="-.")
+    parser.add_option("--addmanyfiles", action="store", nargs=2, help="-.")
+    parser.add_option("--copyintonew", action="store", nargs=3, help="-.")
+    parser.add_option("--getversion", action="store", nargs=1, help="-.")
+    parser.add_option("--exportfile", action="store", nargs=4, help="-.")
+    parser.add_option("--exportall", action="store", nargs=1, help="-.")
+    parser.add_option("--renfile", action="store", nargs=2, help="-.")
+    parser.add_option("--delfile", action="store", nargs=2, help="-.")
+    (options, args) = parser.parse_args()
+
+    print options
 
 
 # Eof()

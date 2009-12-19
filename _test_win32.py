@@ -27,8 +27,8 @@ b.DelFile('to_delete.jpg')
 b.DelFile('to_delete2.jpg')
 
 # Execute.
-b.ExportFile('to_execute.jpg', execute=True)
-b.ExportFile('readme.txt', execute=True)
+b.ExportFile('to_execute.jpg', path='d:', execute=False)
+#b.ExportFile('readme.txt', execute=True)
 
 print( 'Done !' )
 
