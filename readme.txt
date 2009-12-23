@@ -52,6 +52,7 @@
 -----------------
  * Python 2.6. Private-Briefcase is written entirely in Python 2.6. (www.python.org)
  * Python Crypto. Data is crypted AES 256. (www.pycrypto.org)
+ * PyQt4. Graphical user interface is made with Qt. (www.riverbankcomputing.co.uk/software/pyqt/download)
 
 ---------------
   How to use:
@@ -60,5 +61,5 @@
    "import briefcase ; b = briefcase.Briefcase()".
  * Alternatively, you can use command line to add, remove, rename or copy files from briefcase.
  * A LOT of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
- * Note : Letter-Monster was created on a Windows XP machine, so there might be some incompatibilities with other OS.
-    Please let me know if you find any.
+ * Note : Private-Briefcase was created on a Windows XP machine, so there might be some incompatibilities
+    with other OS. Please let me know if you find any.

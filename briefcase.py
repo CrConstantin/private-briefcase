@@ -14,7 +14,6 @@ import shutil
 import glob
 import sqlite3
 import zlib
-import cPickle
 import tempfile
 from time import clock
 
@@ -395,7 +394,7 @@ if __name__ == '__main__':
     parser.add_option("--delfile", action="store", nargs=2, help="-.")
     (options, args) = parser.parse_args()
 
-    print options
+    print( options )
 
 
 # Eof()
