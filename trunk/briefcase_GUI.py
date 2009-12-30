@@ -1,7 +1,22 @@
-# -*- coding: utf-8 -*-
+# -*- coding: latin-1 -*-
 
+'''
+    Briefcase-Project v1.0 \n\
+    Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
+    This module contains Briefcase class with all its functions. \n\
+    Tested on Windows XP, with Python 2.6. \n\
+    External dependencies : pyQt4. \n\
+'''
+
+# Standard libraries.
 import os, sys
+
+# External dependency.
+from briefcase import Briefcase
 from PyQt4 import QtCore, QtGui
+
+__version__ = '1.0'
+
 
 WStyle = '''
 QTabWidget::pane {
@@ -27,7 +42,9 @@ QPushButton:pressed {
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         global WStyle
-        self.buttons = []
+        #
+        self.blist = []
+        self.ilist = []
         #
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -212,6 +229,7 @@ class Ui_MainWindow(object):
         self.actionProperties.setText(QtGui.QApplication.translate("MainWindow", "Properties", None, QtGui.QApplication.UnicodeUTF8))
 
 
+    # Helper functions.
     def calculate_x(self):
         lx = len(self.buttons) % 7
         if not lx:
@@ -241,13 +259,16 @@ class Ui_MainWindow(object):
         self.buttonMenu.exec_(QtGui.QCursor.pos())
 
 
+    # Triggered functions.
     def on_new(self):
         f = QtGui.QFileDialog(self.centralwidget, 'Save new briefcase file', os.getcwd())
         self.input = f.getSaveFileName()
+        self.b = Briefcase(self.input, '0123456789abcQWE')
 
     def on_open(self):
         f = QtGui.QFileDialog(self.centralwidget, 'Load existing briefcase file', os.getcwd())
         self.input = f.getOpenFileName()
+        self.b = Briefcase(self.input, '0123456789abcQWE')
 
     def on_join(self):
         print( 'Triggered JOIN !' )
