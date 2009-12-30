@@ -16,6 +16,7 @@ import sqlite3
 import zlib
 import tempfile
 from time import clock
+from time import strftime
 
 # External dependency.
 from Crypto.Cipher import AES
@@ -55,8 +56,9 @@ class Briefcase:
         else:
             self.pwd = md4.hexdigest()
             # Prv table contains the password and the original names of the files.
-            self.c.execute('create table prv (pwd TEXT unique, file TEXT)')
-            self.c.execute('insert into prv (pwd) values (?)', [self.pwd])
+            self.c.execute('create table prv (pwd TEXT unique, file TEXT, date TEXT, user TEXT)')
+            self.c.execute('insert into prv (pwd,date,user) values (?,?,?)',
+                [self.pwd, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
             self.conn.commit()
         #
 
@@ -126,7 +128,8 @@ class Briefcase:
             return 1
 
         self.c.execute(('insert into %s (raw, hash) values (?,?)' % filename), [raw, hash])
-        self.c.execute('insert or abort into prv (file) values (?)', [os.path.split(fpath)[1]])
+        self.c.execute('insert or abort into prv (file,date,user) values (?,?,?)',
+            [os.path.split(fpath)[1], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
