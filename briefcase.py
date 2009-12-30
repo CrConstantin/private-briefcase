@@ -36,9 +36,9 @@ class Briefcase:
         One SQLITE3 file for each Briefcase instance. \n\
         '''
         #
-        self.database = database
+        self.database = str(database)
         #
-        if os.path.exists(database):
+        if os.path.exists(self.database):
             exists_db = True
         else:
             exists_db = False
