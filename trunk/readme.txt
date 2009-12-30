@@ -19,10 +19,12 @@
  - keeps your private files in one place, on HDD, in one big database;
  - all files are compressed with zlib 9, and crypted with AES 256;
  - you can add the same file several times. All changes are versioned and you can rollback anytime;
- - you can add one, or multiple files;
+ - you can add files one by one, or multiple at the same time;
  - you can export one, or multiple files;
  - command line access to add and export, copy rename and delete;
  - fast, secure, intuitive.
+
+ - website : http://code.google.com/p/private-briefcase
 
 ------------
   Licence:
@@ -60,6 +62,6 @@
  * In order to access Private-Briefcase classe, all you have to do is :
    "import briefcase ; b = briefcase.Briefcase()".
  * Alternatively, you can use command line to add, remove, rename or copy files from briefcase.
- * A LOT of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
+ * A lot of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
  * Note : Private-Briefcase was created on a Windows XP machine, so there might be some incompatibilities
     with other OS. Please let me know if you find any.

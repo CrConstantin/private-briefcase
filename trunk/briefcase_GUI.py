@@ -3,6 +3,7 @@
 '''
     Briefcase-Project v1.0 \n\
     Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
+    Website : http://code.google.com/p/private-briefcase \n\
     This module contains Briefcase class with all its functions. \n\
     Tested on Windows XP, with Python 2.6. \n\
     External dependencies : pyQt4. \n\
