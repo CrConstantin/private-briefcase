@@ -45,16 +45,15 @@ class Briefcase:
 
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
+        md4 = MD4.new(password)
 
         if exists_db:
             self.pwd = self.c.execute('select pwd from prv').fetchone()[0]
-            if password != self.pwd:
+            if self.pwd != md4.hexdigest():
                 print('The password is INCORRECT! You will not be able to decrypt the data!')
                 return -1
         else:
-            md4 = MD4.new(password)
             self.pwd = md4.hexdigest()
-            del md4
             # Prv table contains the password and the original names of the files.
             self.c.execute('create table prv (pwd TEXT unique, file TEXT)')
             self.c.execute('insert into prv (pwd) values (?)', [self.pwd])
