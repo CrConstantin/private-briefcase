@@ -15,6 +15,7 @@ import glob
 import sqlite3
 import zlib
 import tempfile
+import hashlib
 from time import clock
 from time import strftime
 
@@ -46,19 +47,18 @@ class Briefcase:
 
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
-        md4 = MD4.new(password)
+        md5 = hashlib.md5(password)
 
         if exists_db:
             self.pwd = self.c.execute('select pwd from prv').fetchone()[0]
-            if self.pwd != md4.hexdigest():
+            if self.pwd != md5.hexdigest():
                 print('The password is INCORRECT! You will not be able to decrypt the data!')
                 return -1
         else:
-            self.pwd = md4.hexdigest()
+            self.pwd = md5.hexdigest()
             # Prv table contains the password and the original names of the files.
-            self.c.execute('create table prv (pwd TEXT unique, file TEXT, date TEXT, user TEXT)')
-            self.c.execute('insert into prv (pwd,date,user) values (?,?,?)',
-                [self.pwd, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+            self.c.execute('create table prv (pwd TEXT unique, file TEXT)')
+            self.c.execute('insert into prv (pwd) values (?)', [self.pwd])
             self.conn.commit()
         #
 
@@ -104,8 +104,8 @@ class Briefcase:
 
         # Try to create the table.
         try:
-            self.c.execute('create table %s (version integer primary key asc, raw blob, hash text)' %
-                filename)
+            self.c.execute('create table %s (version integer primary key asc, raw BLOB, hash TEXT,'
+                'date TEXT, user TEXT)' % filename)
         # If the table is already created and versionable is false, raise error and exit. Else, pass.
         except:
             if not versionable:
@@ -127,9 +127,9 @@ class Briefcase:
                 % os.path.split(fpath)[1])
             return 1
 
-        self.c.execute(('insert into %s (raw, hash) values (?,?)' % filename), [raw, hash])
-        self.c.execute('insert or abort into prv (file,date,user) values (?,?,?)',
-            [os.path.split(fpath)[1], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+        self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % filename), [raw, hash,
+            strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+        self.c.execute('insert or abort into prv (file) values (?)', [os.path.split(fpath)[1]])
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
@@ -202,11 +202,11 @@ class Briefcase:
             return 1
 
 
-    def GetVersion(self, fname):
+    def GetProperties(self, fname):
         '''
-        Returns an integer, representing the most recent version of the file. \n\
-        All versions, from 1, to this number must be valid,
-        because when a version is deleted, the file table is re-indexed. \n\
+        Returns a dictionary, containing the following key-value pairs :
+        firstFileDate, lastFileDate, firstFileUser, lastFileUser, versions. \n\
+        ... work in progress ...
         '''
         md4 = MD4.new( fname.lower() )
         filename = 't'+md4.hexdigest()
