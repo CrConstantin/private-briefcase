@@ -66,7 +66,7 @@ class Briefcase:
 
     def _transformb(self, bdata):
         '''
-        Transforms any binary data into ready-to-write SQL information.
+        Transforms any binary data into ready-to-write SQL information. \n\
         '''
         crypt = AES.new(self.pwd)
         vCompressed = zlib.compress(bdata,9)
@@ -77,7 +77,7 @@ class Briefcase:
 
     def _restoreb(self, bdata):
         '''
-        Restores binary data from SQL information.
+        Restores binary data from SQL information. \n\
         '''
         crypt = AES.new(self.pwd)
         vCompressed = crypt.decrypt(bdata)
@@ -167,7 +167,7 @@ class Briefcase:
 
     def CopyIntoNew(self, fname, version, new_fname):
         '''
-        Copy one version of one file, into a new file, that will have version 1.
+        Copy one version of one file, into a new file, that will have version 1. \n\
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
@@ -294,7 +294,7 @@ class Briefcase:
 
     def RenFile(self, fname, new_fname):
         '''
-        Rename one file. This cannot be undone, so be careful.
+        Rename one file. This cannot be undone, so be careful. \n\
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
@@ -357,6 +357,7 @@ class Briefcase:
         Returns a dictionary, containing the following key-value pairs : \n\
         fileName, firstFileDate, lastFileDate, firstFileUser, lastFileUser, versions. \n\
         If the file has 1 version, firstFileDate==lastFileDate and firstFileUser==lastFileUser. \n\
+        On error, it returns -1. \n\
         '''
         ti = clock()
         md4 = MD4.new( fname.lower() )
@@ -384,7 +385,8 @@ class Briefcase:
 
     def GetFileList(self):
         '''
-        Returns a list with all the files from current Briefcase file.
+        Returns a list with all the files from current Briefcase file. \n\
+        Cannot have errors. \n\
         '''
         ti = clock()
         li = self.c.execute('select file from prv where file notnull order by file asc').fetchall()
