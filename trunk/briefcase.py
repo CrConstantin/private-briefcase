@@ -202,36 +202,6 @@ class Briefcase:
             return -1
 
 
-    def GetProperties(self, fname):
-        '''
-        Returns a dictionary, containing the following key-value pairs : \n\
-        firstFileDate, lastFileDate, firstFileUser, lastFileUser, versions. \n\
-        If the file has 1 version, firstFileDate==lastFileDate and firstFileUser==lastFileUser. \n\
-        '''
-        ti = clock()
-        md4 = MD4.new( fname.lower() )
-        filename = 't'+md4.hexdigest()
-        del md4
-
-        try:
-            firstFileDate = self.c.execute('select date from %s order by version asc' %
-                filename).fetchone()[0]
-            lastFileDate = self.c.execute('select date from %s order by version desc' %
-                filename).fetchone()[0]
-            firstFileUser = self.c.execute('select user from %s order by version asc' %
-                filename).fetchone()[0]
-            lastFileUser = self.c.execute('select user from %s order by version desc' %
-                filename).fetchone()[0]
-            versions = len( self.c.execute('select version from %s' % filename).fetchall() )
-            #
-            self.lastDebugMsg = 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti)
-            return {'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
-                'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser, 'versions':versions}
-        except:
-            self.lastErrorMsg = 'Func GetProperties: cannot find the file called "%s"!' % fname
-            return -1
-
-
     def ExportFile(self, fname, path='', version=0, execute=False):
         '''
         Call one file from the briefcase. \n\
@@ -380,6 +350,49 @@ class Briefcase:
             except:
                 self.lastErrorMsg = 'Func DelFile: cannot find the file called "%s"!' % fname
                 return -1
+
+
+    def GetProperties(self, fname):
+        '''
+        Returns a dictionary, containing the following key-value pairs : \n\
+        fileName, firstFileDate, lastFileDate, firstFileUser, lastFileUser, versions. \n\
+        If the file has 1 version, firstFileDate==lastFileDate and firstFileUser==lastFileUser. \n\
+        '''
+        ti = clock()
+        md4 = MD4.new( fname.lower() )
+        filename = 't'+md4.hexdigest()
+        del md4
+
+        try:
+            firstFileDate = self.c.execute('select date from %s order by version asc' %
+                filename).fetchone()[0]
+            lastFileDate = self.c.execute('select date from %s order by version desc' %
+                filename).fetchone()[0]
+            firstFileUser = self.c.execute('select user from %s order by version asc' %
+                filename).fetchone()[0]
+            lastFileUser = self.c.execute('select user from %s order by version desc' %
+                filename).fetchone()[0]
+            versions = len( self.c.execute('select version from %s' % filename).fetchall() )
+            #
+            self.lastDebugMsg = 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti)
+            return {'fileName':fname, 'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
+                'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser, 'versions':versions}
+        except:
+            self.lastErrorMsg = 'Func GetProperties: cannot find the file called "%s"!' % fname
+            return -1
+
+
+    def GetFileList(self):
+        '''
+        Returns a list with all the files from current Briefcase file.
+        '''
+        ti = clock()
+        li = self.c.execute('select file from prv where file notnull order by file asc').fetchall()
+        lf = []
+        for elem in li:
+            lf.append(elem[0])
+        self.lastDebugMsg = 'Get file list took %.4f sec.' % (clock()-ti)
+        return lf
 
 
 #

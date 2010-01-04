@@ -12,6 +12,11 @@ ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\*.jpg')
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
+# Print file list.
+print
+print( b.GetFileList() )
+print
+
 # Add another file.
 ret = b.AddFile('readme.txt')
 if not ret : print( b.lastDebugMsg )
@@ -28,9 +33,11 @@ if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
 # Properties.
+print
 ret = b.GetProperties('to_delete.jpg')
 if ret!=-1 : print( ret )
 else : print( b.lastErrorMsg )
+print
 
 # Copy.
 ret = b.CopyIntoNew('to_delete.jpg', 1, 'to_execute.jpg')
