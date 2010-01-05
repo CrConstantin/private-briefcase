@@ -44,8 +44,8 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         global WStyle
         #
+        # B name, B name_b, B name_c, B name _s
         self.tabs = {}
-        self.buttons = {}
         #
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -211,14 +211,16 @@ class Ui_MainWindow(object):
 
     # Helper functions.
     def calculate_x(self):
-        lx = len(self.buttons[self.tabWidget.currentIndex()]) % 7
+        tab_name = self.tabWidget.currentWidget().text
+        lx = len(self.tabs[tab_name+'_b']) % 7
         if not lx:
             return 10
         else:
             return 10 + (10+95)*lx
 
     def calculate_y(self):
-        ly = len(self.buttons[self.tabWidget.currentIndex()]) // 7
+        tab_name = self.tabWidget.currentWidget().text
+        ly = len(self.tabs[tab_name+'_b']) // 7
         if not ly:
             return 10
         else:
@@ -239,6 +241,54 @@ class Ui_MainWindow(object):
     def right_click(self):
         self.buttonMenu.exec_(QtGui.QCursor.pos())
 
+    def _new_tab(self, tab_name):
+        #
+        # Setup new tab.
+        newTab = QtGui.QWidget()
+        newTab.setObjectName(tab_name)
+        newTab.text = tab_name
+        scrollArea = QtGui.QScrollArea(newTab)
+        scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setObjectName(tab_name+'_s')
+        scrollAreaContents = QtGui.QWidget(scrollArea)
+        scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
+        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 470))
+        scrollAreaContents.setObjectName(tab_name+'_c')
+        scrollArea.setWidget(scrollAreaContents)
+        self.tabWidget.addTab(newTab, "")
+        self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), QtGui.QApplication.translate("MainWindow",
+            tab_name, None, QtGui.QApplication.UnicodeUTF8))
+        #
+        # Add tab to dictionary.
+        self.tabs[tab_name] = newTab
+        self.tabs[tab_name+'_b'] = {}
+        self.tabs[tab_name+'_s'] = scrollArea
+        self.tabs[tab_name+'_c'] = scrollAreaContents
+        #setattr(self, tab_name, newTab) #???
+        #
+
+    def _new_button(self, tab_name, file_name):
+        #
+        # Prepair scroll area.
+        self.tabs[tab_name+'_s'].setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
+        #
+        # Setup button.
+        pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
+        pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        pushButton.setGeometry( QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60) )
+        pushButton.setFlat(True)
+        pushButton.setObjectName(file_name)
+        QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
+        pushButton.clicked.connect(self.double_click)
+        pushButton.setStatusTip(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
+        pushButton.setText(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
+        #
+        # Add button to dictionary.
+        self.tabs[tab_name+'_b'][file_name] = pushButton
+        pushButton.show()
+        #
+
 
     # Triggered functions.
     def on_new(self):
@@ -246,27 +296,9 @@ class Ui_MainWindow(object):
         f = QtGui.QFileDialog()
         input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
-        tname = os.path.split( str(input).title() )[1]
+        tab_name = os.path.split(str(input).title())[1]
         self.b = Briefcase(input, '0123456789abcQW')
-        #
-        newTab = QtGui.QWidget()
-        newTab.setObjectName(tname)
-        scrollArea = QtGui.QScrollArea(newTab)
-        scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
-        scrollArea.setWidgetResizable(True)
-        scrollArea.setObjectName("scrollArea")
-        scrollAreaContents = QtGui.QWidget(scrollArea)
-        scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
-        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 470))
-        scrollAreaContents.setObjectName("scrollAreaContents")
-        scrollArea.setWidget(scrollAreaContents)
-        self.tabWidget.addTab(newTab, "")
-        self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), QtGui.QApplication.translate("MainWindow",
-            tname, None, QtGui.QApplication.UnicodeUTF8))
-        #
-        self.tabs[self.tabWidget.indexOf(newTab)] = (tname,newTab,scrollArea,scrollAreaContents)
-        setattr(self, tname, newTab)
-        self.buttons[self.tabWidget.indexOf(newTab)] = []
+        self._new_tab(tab_name)
         #
 
     def on_open(self):
@@ -274,44 +306,12 @@ class Ui_MainWindow(object):
         f = QtGui.QFileDialog()
         input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
-        tname = os.path.split( str(input).title() )[1]
+        tab_name = os.path.split(str(input).title())[1]
         self.b = Briefcase(input, '0123456789abcQW')
+        self._new_tab(tab_name)
         #
-        newTab = QtGui.QWidget()
-        newTab.setObjectName(tname)
-        scrollArea = QtGui.QScrollArea(newTab)
-        scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
-        scrollArea.setWidgetResizable(True)
-        scrollArea.setObjectName("scrollArea")
-        scrollAreaContents = QtGui.QWidget(scrollArea)
-        scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
-        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 470))
-        scrollAreaContents.setObjectName("scrollAreaContents")
-        scrollArea.setWidget(scrollAreaContents)
-        self.tabWidget.addTab(newTab, "")
-        self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), QtGui.QApplication.translate("MainWindow",
-            tname, None, QtGui.QApplication.UnicodeUTF8))
-        #
-        self.tabs[self.tabWidget.indexOf(newTab)] = (tname,newTab,scrollArea,scrollAreaContents)
-        setattr(self, tname, newTab)
-        self.buttons[self.tabWidget.indexOf(newTab)] = []
-        #
-        for fname in self.b.GetFileList():
-            scrollAreaContents = self.tabs[self.tabWidget.currentIndex()][3]
-            scrollAreaContents.setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
-            #
-            pushButton = QtGui.QPushButton(scrollAreaContents)
-            pushButton.setGeometry( QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60) )
-            pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-            QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
-            pushButton.clicked.connect(self.double_click)
-            pushButton.setFlat(True)
-            pushButton.setObjectName(fname)
-            pushButton.setStatusTip(QtGui.QApplication.translate("MainWindow", fname, None, QtGui.QApplication.UnicodeUTF8))
-            pushButton.setText(QtGui.QApplication.translate("MainWindow", fname, None, QtGui.QApplication.UnicodeUTF8))
-            #
-            self.buttons[self.tabWidget.currentIndex()].append(pushButton)
-            pushButton.show()
+        for file_name in self.b.GetFileList():
+            self._new_button(tab_name, file_name)
         #
 
     def on_join(self):
@@ -324,25 +324,13 @@ class Ui_MainWindow(object):
         if not input : return
         #
         for elem in input:
-            fname = os.path.split(str(elem))[1]
+            #
             self.b.AddFile(str(elem))
             #
-            scrollAreaContents = self.tabs[self.tabWidget.currentIndex()][3]
-            scrollAreaContents.setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
+            tab_name = self.tabWidget.currentWidget().text
+            file_name = os.path.split(str(elem))[1]
+            self._new_button(tab_name, file_name)
             #
-            pushButton = QtGui.QPushButton(scrollAreaContents)
-            pushButton.setGeometry( QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60) )
-            pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-            QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
-            pushButton.clicked.connect(self.double_click)
-            pushButton.setFlat(True)
-            pushButton.setObjectName("pushButton")
-            pushButton.setStatusTip(QtGui.QApplication.translate("MainWindow", fname, None, QtGui.QApplication.UnicodeUTF8))
-            pushButton.setText(QtGui.QApplication.translate("MainWindow", fname, None, QtGui.QApplication.UnicodeUTF8))
-            #
-            self.buttons[self.tabWidget.currentIndex()].append(pushButton)
-            pushButton.show()
-        #
 
     def on_refresh(self):
         print( 'Triggered REFRESH !' )
