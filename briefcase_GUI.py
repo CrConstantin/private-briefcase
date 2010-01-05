@@ -124,6 +124,33 @@ class MainWindow(QtGui.QMainWindow):
         self.actionAbout.setIcon(icon7)
         self.actionAbout.setObjectName("actionAbout")
         self.actionAbout.setText("About")
+        #
+        # Tool bar.
+        toolBar = QtGui.QToolBar(self)
+        toolBar.setIconSize(QtCore.QSize(36, 36))
+        toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        toolBar.setObjectName("toolBar")
+        self.addToolBar(QtCore.Qt.TopToolBarArea, toolBar)
+        #
+        # Add actions on toolbar.
+        self.actionNew.triggered.connect(self.on_new)
+        toolBar.addAction(self.actionNew)
+        self.actionOpen.triggered.connect(self.on_open)
+        toolBar.addAction(self.actionOpen)
+        self.actionJoin.triggered.connect(self.on_join)
+        toolBar.addAction(self.actionJoin)
+        self.actionAdd_file.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAdd_file)
+        self.actionAdd_many.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAdd_many)
+        self.actionRefresh.triggered.connect(self.on_refresh)
+        toolBar.addAction(self.actionRefresh)
+        self.actionHelp.triggered.connect(self.on_help)
+        toolBar.addAction(self.actionHelp)
+        self.actionAbout.triggered.connect(self.on_about)
+        toolBar.addAction(self.actionAbout)
+        #
+        # Button actions.
         self.actionView = QtGui.QAction(self)
         icon8 = QtGui.QIcon()
         icon8.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-View.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -161,30 +188,22 @@ class MainWindow(QtGui.QMainWindow):
         self.actionProperties.setObjectName("actionProperties")
         self.actionProperties.setText("Properties")
         #
-        # Tool bar.
-        toolBar = QtGui.QToolBar(self)
-        toolBar.setIconSize(QtCore.QSize(36, 36))
-        toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        toolBar.setObjectName("toolBar")
-        self.addToolBar(QtCore.Qt.TopToolBarArea, toolBar)
-        #
-        # Add actions on toolbar.
-        self.actionNew.triggered.connect(self.on_new)
-        toolBar.addAction(self.actionNew)
-        self.actionOpen.triggered.connect(self.on_open)
-        toolBar.addAction(self.actionOpen)
-        self.actionJoin.triggered.connect(self.on_join)
-        toolBar.addAction(self.actionJoin)
-        self.actionAdd_file.triggered.connect(self.on_add)
-        toolBar.addAction(self.actionAdd_file)
-        self.actionAdd_many.triggered.connect(self.on_add)
-        toolBar.addAction(self.actionAdd_many)
-        self.actionRefresh.triggered.connect(self.on_refresh)
-        toolBar.addAction(self.actionRefresh)
-        self.actionHelp.triggered.connect(self.on_help)
-        toolBar.addAction(self.actionHelp)
-        self.actionAbout.triggered.connect(self.on_about)
-        toolBar.addAction(self.actionAbout)
+        '''
+        # Setup Menu + add Actions.
+        self.qtMenu = QtGui.QMenu()
+        self.actionView.triggered.connect(self.on_view)
+        self.qtMenu.addAction(self.actionView)
+        self.actionEdit.triggered.connect(self.on_edit)
+        self.qtMenu.addAction(self.actionEdit)
+        self.actionCopy.triggered.connect(self.on_copy)
+        self.qtMenu.addAction(self.actionCopy)
+        self.actionDelete.triggered.connect(self.on_delete)
+        self.qtMenu.addAction(self.actionDelete)
+        self.actionRename.triggered.connect(self.on_rename)
+        self.qtMenu.addAction(self.actionRename)
+        self.actionProperties.triggered.connect(self.on_properties)
+        self.qtMenu.addAction(self.actionProperties)
+        '''
         #
         # Setup double click timer.
         self.dblClickTimer = QtCore.QTimer()
@@ -195,7 +214,7 @@ class MainWindow(QtGui.QMainWindow):
 
     # Helper functions.
     def calculate_x(self):
-        tab_name = self.tabWidget.currentWidget().text
+        tab_name = str(self.tabWidget.currentWidget().objectName())
         lx = len(self.tabs[tab_name+'_b']) % 7
         if not lx:
             return 10
@@ -203,7 +222,7 @@ class MainWindow(QtGui.QMainWindow):
             return 10 + (10+95)*lx
 
     def calculate_y(self):
-        tab_name = self.tabWidget.currentWidget().text
+        tab_name = str(self.tabWidget.currentWidget().objectName())
         ly = len(self.tabs[tab_name+'_b']) // 7
         if not ly:
             return 10
@@ -223,14 +242,15 @@ class MainWindow(QtGui.QMainWindow):
             return
 
     def right_click(self):
-        qtMenu = self.sender().qtMenu
-        qtMenu.exec_(QtGui.QCursor.pos())
+        qtM = self.sender().qtMenu
+        qtM.exec_(self.cursor().pos())
+        #self.qtMenu.exec_(self.cursor().pos())
 
     def _new_tab(self, tab_name):
+        #
         # Tab widget.
         newTab = QtGui.QWidget()
         newTab.setObjectName(tab_name)
-        newTab.text = tab_name
         # Scroll area.
         scrollArea = QtGui.QScrollArea(newTab)
         scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
@@ -243,9 +263,7 @@ class MainWindow(QtGui.QMainWindow):
         scrollAreaContents.setObjectName(tab_name+'_c')
         scrollArea.setWidget(scrollAreaContents)
         self.tabWidget.addTab(newTab, "")
-        self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), QtGui.QApplication.translate("MainWindow",
-            tab_name, None, QtGui.QApplication.UnicodeUTF8))
-        #
+        self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), tab_name)
         # Add tab to dictionary.
         self.tabs[tab_name] = newTab
         self.tabs[tab_name+'_b'] = {}
@@ -255,37 +273,35 @@ class MainWindow(QtGui.QMainWindow):
 
     def _new_button(self, tab_name, file_name):
         #
-        # Set minimum size for container.
+        # Recalculate minimum size for container.
         self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
-        #
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         pushButton.setGeometry(QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60))
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
+        pushButton.setStatusTip(file_name)
+        pushButton.setText(file_name)
         #
         # Setup Menu + add Actions.
-        pushButton.qtMenu = QtGui.QMenu()
+        qtMenu = QtGui.QMenu(pushButton)
         self.actionView.triggered.connect(self.on_view)
-        pushButton.qtMenu.addAction(self.actionView)
+        qtMenu.addAction(self.actionView)
         self.actionEdit.triggered.connect(self.on_edit)
-        pushButton.qtMenu.addAction(self.actionEdit)
+        qtMenu.addAction(self.actionEdit)
         self.actionCopy.triggered.connect(self.on_copy)
-        pushButton.qtMenu.addAction(self.actionCopy)
+        qtMenu.addAction(self.actionCopy)
         self.actionDelete.triggered.connect(self.on_delete)
-        pushButton.qtMenu.addAction(self.actionDelete)
+        qtMenu.addAction(self.actionDelete)
         self.actionRename.triggered.connect(self.on_rename)
-        pushButton.qtMenu.addAction(self.actionRename)
+        qtMenu.addAction(self.actionRename)
         self.actionProperties.triggered.connect(self.on_properties)
-        pushButton.qtMenu.addAction(self.actionProperties)
+        qtMenu.addAction(self.actionProperties)
         #
         # Connect events.
         pushButton.clicked.connect(self.double_click)
-        QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
-        pushButton.setStatusTip(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
-        pushButton.setText(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
-        #
+        pushButton.customContextMenuRequested.connect(self.right_click)
         # Add button to dictionary.
         self.tabs[tab_name+'_b'][file_name] = pushButton
         pushButton.show()
