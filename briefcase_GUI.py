@@ -3,7 +3,7 @@
 '''
     Briefcase-Project v1.0 \n\
     Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
-    Website : http://code.google.com/p/private-briefcase \n\
+    Website : http://private-briefcase.googlecode.com \n\
     This module contains Briefcase class with all its functions. \n\
     Tested on Windows XP, with Python 2.6. \n\
     External dependencies : pyQt4. \n\
@@ -40,173 +40,157 @@ QPushButton:pressed {
 }
 '''
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        global WStyle
+class MainWindow(QtGui.QMainWindow):
+    def __init__(self, parent=None):
         #
-        # B name, B name_b, B name_c, B name _s
+        super(MainWindow, self).__init__(parent)
+        #
+        global WStyle
+        # B name, B name _b, B name _c, B name _s
         self.tabs = {}
         #
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
+        self.resize(800, 600)
+        QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
+        QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
+        self.setObjectName("MainWindow")
+        self.setWindowTitle("Private Briefcase GUI")
         #
-        self.centralwidget = QtGui.QWidget(MainWindow)
+        # Set central widget.
+        self.centralwidget = QtGui.QWidget(self)
         self.centralwidget.setStyleSheet(WStyle)
         self.centralwidget.setObjectName("centralwidget")
-        MainWindow.setCentralWidget(self.centralwidget)
+        self.setCentralWidget(self.centralwidget)
         #
-        # Status bar.
-        self.statusbar = QtGui.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+        # Set status bar.
+        statusbar = QtGui.QStatusBar(self)
+        statusbar.setObjectName("statusbar")
+        self.setStatusBar(statusbar)
         #
-        # Tool bar.
-        self.toolBar = QtGui.QToolBar(MainWindow)
-        self.toolBar.setIconSize(QtCore.QSize(36, 36))
-        self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        self.toolBar.setObjectName("toolBar")
-        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
-        #
-        # Tab widget.
+        # Set tab widget.
         self.tabWidget = QtGui.QTabWidget(self.centralwidget)
         self.tabWidget.setGeometry(QtCore.QRect(10, 10, 780, 500))
         self.tabWidget.setTabShape(QtGui.QTabWidget.Triangular)
         self.tabWidget.setTabsClosable(True)
         self.tabWidget.setMovable(True)
         self.tabWidget.setObjectName("tabWidget")
+        self.tabWidget.setCurrentIndex(0)
         #
         # Setup actions.
-        self.actionNew = QtGui.QAction(MainWindow)
+        self.actionNew = QtGui.QAction(self)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-New.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionNew.setIcon(icon)
         self.actionNew.setObjectName("actionNew")
-        self.actionOpen = QtGui.QAction(MainWindow)
+        self.actionNew.setText("New")
+        self.actionOpen = QtGui.QAction(self)
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Open.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionOpen.setIcon(icon1)
         self.actionOpen.setObjectName("actionOpen")
-        self.actionJoin = QtGui.QAction(MainWindow)
+        self.actionOpen.setText("Open")
+        self.actionJoin = QtGui.QAction(self)
         icon2 = QtGui.QIcon()
         icon2.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Join.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionJoin.setIcon(icon2)
         self.actionJoin.setObjectName("actionJoin")
-        self.actionAdd_file = QtGui.QAction(MainWindow)
+        self.actionJoin.setText("Join")
+        self.actionAdd_file = QtGui.QAction(self)
         icon3 = QtGui.QIcon()
         icon3.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionAdd_file.setIcon(icon3)
         self.actionAdd_file.setObjectName("actionAdd_file")
-        self.actionAdd_many = QtGui.QAction(MainWindow)
+        self.actionAdd_file.setText("Add file")
+        self.actionAdd_many = QtGui.QAction(self)
         icon4 = QtGui.QIcon()
         icon4.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add-Many.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionAdd_many.setIcon(icon4)
         self.actionAdd_many.setObjectName("actionAdd_many")
-        self.actionRefresh = QtGui.QAction(MainWindow)
+        self.actionAdd_many.setText("Add many")
+        self.actionRefresh = QtGui.QAction(self)
         icon5 = QtGui.QIcon()
         icon5.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionRefresh.setIcon(icon5)
         self.actionRefresh.setObjectName("actionRefresh")
-        self.actionHelp = QtGui.QAction(MainWindow)
+        self.actionRefresh.setText("Refresh")
+        self.actionHelp = QtGui.QAction(self)
         icon6 = QtGui.QIcon()
         icon6.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionHelp.setIcon(icon6)
         self.actionHelp.setObjectName("actionHelp")
-        self.actionAbout = QtGui.QAction(MainWindow)
+        self.actionHelp.setText("Help")
+        self.actionAbout = QtGui.QAction(self)
         icon7 = QtGui.QIcon()
         icon7.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Information.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionAbout.setIcon(icon7)
         self.actionAbout.setObjectName("actionAbout")
-        self.actionView = QtGui.QAction(MainWindow)
+        self.actionAbout.setText("About")
+        self.actionView = QtGui.QAction(self)
         icon8 = QtGui.QIcon()
         icon8.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-View.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionView.setIcon(icon8)
         self.actionView.setObjectName("actionView")
-        self.actionEdit = QtGui.QAction(MainWindow)
+        self.actionView.setText("View")
+        self.actionEdit = QtGui.QAction(self)
         icon9 = QtGui.QIcon()
         icon9.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Edit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionEdit.setIcon(icon9)
         self.actionEdit.setObjectName("actionEdit")
-        self.actionCopy = QtGui.QAction(MainWindow)
+        self.actionEdit.setText("Edit")
+        self.actionCopy = QtGui.QAction(self)
         icon10 = QtGui.QIcon()
         icon10.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionCopy.setIcon(icon10)
         self.actionCopy.setObjectName("actionCopy")
-        self.actionDelete = QtGui.QAction(MainWindow)
+        self.actionCopy.setText("Copy")
+        self.actionDelete = QtGui.QAction(self)
         icon11 = QtGui.QIcon()
         icon11.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Delete.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionDelete.setIcon(icon11)
         self.actionDelete.setObjectName("actionDelete")
-        self.actionRename = QtGui.QAction(MainWindow)
+        self.actionDelete.setText("Delete")
+        self.actionRename = QtGui.QAction(self)
         icon12 = QtGui.QIcon()
         icon12.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Rename.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionRename.setIcon(icon12)
         self.actionRename.setObjectName("actionRename")
-        self.actionProperties = QtGui.QAction(MainWindow)
+        self.actionRename.setText("Rename")
+        self.actionProperties = QtGui.QAction(self)
         icon13 = QtGui.QIcon()
         icon13.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionProperties.setIcon(icon13)
         self.actionProperties.setObjectName("actionProperties")
+        self.actionProperties.setText("Properties")
+        #
+        # Tool bar.
+        toolBar = QtGui.QToolBar(self)
+        toolBar.setIconSize(QtCore.QSize(36, 36))
+        toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        toolBar.setObjectName("toolBar")
+        self.addToolBar(QtCore.Qt.TopToolBarArea, toolBar)
         #
         # Add actions on toolbar.
-        self.toolBar.addAction(self.actionNew)
-        QtCore.QObject.connect(self.actionNew, QtCore.SIGNAL("triggered()"), self.on_new)
-        self.toolBar.addAction(self.actionOpen)
-        QtCore.QObject.connect(self.actionOpen, QtCore.SIGNAL("triggered()"), self.on_open)
-        self.toolBar.addAction(self.actionJoin)
-        QtCore.QObject.connect(self.actionJoin, QtCore.SIGNAL("triggered()"), self.on_join)
-        self.toolBar.addAction(self.actionAdd_file)
-        QtCore.QObject.connect(self.actionAdd_file, QtCore.SIGNAL("triggered()"), self.on_add)
-        self.toolBar.addAction(self.actionAdd_many)
-        QtCore.QObject.connect(self.actionAdd_many, QtCore.SIGNAL("triggered()"), self.on_add)
-        self.toolBar.addAction(self.actionRefresh)
-        QtCore.QObject.connect(self.actionRefresh, QtCore.SIGNAL("triggered()"), self.on_refresh)
-        self.toolBar.addAction(self.actionHelp)
-        QtCore.QObject.connect(self.actionHelp, QtCore.SIGNAL("triggered()"), self.on_help)
-        self.toolBar.addAction(self.actionAbout)
-        QtCore.QObject.connect(self.actionAbout, QtCore.SIGNAL("triggered()"), self.on_about)
-        #
-        # Setup + add actions on menu.
-        self.buttonMenu = QtGui.QMenu()
-        self.actionView.triggered.connect(self.on_view)
-        self.buttonMenu.addAction(self.actionView)
-        self.actionEdit.triggered.connect(self.on_edit)
-        self.buttonMenu.addAction(self.actionEdit)
-        self.actionCopy.triggered.connect(self.on_copy)
-        self.buttonMenu.addAction(self.actionCopy)
-        self.actionDelete.triggered.connect(self.on_delete)
-        self.buttonMenu.addAction(self.actionDelete)
-        self.actionRename.triggered.connect(self.on_rename)
-        self.buttonMenu.addAction(self.actionRename)
-        self.actionProperties.triggered.connect(self.on_properties)
-        self.buttonMenu.addAction(self.actionProperties)
+        self.actionNew.triggered.connect(self.on_new)
+        toolBar.addAction(self.actionNew)
+        self.actionOpen.triggered.connect(self.on_open)
+        toolBar.addAction(self.actionOpen)
+        self.actionJoin.triggered.connect(self.on_join)
+        toolBar.addAction(self.actionJoin)
+        self.actionAdd_file.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAdd_file)
+        self.actionAdd_many.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAdd_many)
+        self.actionRefresh.triggered.connect(self.on_refresh)
+        toolBar.addAction(self.actionRefresh)
+        self.actionHelp.triggered.connect(self.on_help)
+        toolBar.addAction(self.actionHelp)
+        self.actionAbout.triggered.connect(self.on_about)
+        toolBar.addAction(self.actionAbout)
         #
         # Setup double click timer.
         self.dblClickTimer = QtCore.QTimer()
         self.dblClickTimer.setInterval(500)
         self.dblClickTimer.setSingleShot(True)
         #
-        # Call translate and final setup.
-        self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(0)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "Private Briefcase GUI", None, QtGui.QApplication.UnicodeUTF8))
-        self.toolBar.setWindowTitle(QtGui.QApplication.translate("MainWindow", "toolBar", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionNew.setText(QtGui.QApplication.translate("MainWindow", "New", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionOpen.setText(QtGui.QApplication.translate("MainWindow", "Open", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionJoin.setText(QtGui.QApplication.translate("MainWindow", "Join", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionAdd_file.setText(QtGui.QApplication.translate("MainWindow", "Add file", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionAdd_many.setText(QtGui.QApplication.translate("MainWindow", "Add many", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionRefresh.setText(QtGui.QApplication.translate("MainWindow", "Refresh", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionHelp.setText(QtGui.QApplication.translate("MainWindow", "Help", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionAbout.setText(QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionView.setText(QtGui.QApplication.translate("MainWindow", "View", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionEdit.setText(QtGui.QApplication.translate("MainWindow", "Edit", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionCopy.setText(QtGui.QApplication.translate("MainWindow", "Copy", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionDelete.setText(QtGui.QApplication.translate("MainWindow", "Delete", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionRename.setText(QtGui.QApplication.translate("MainWindow", "Rename", None, QtGui.QApplication.UnicodeUTF8))
-        self.actionProperties.setText(QtGui.QApplication.translate("MainWindow", "Properties", None, QtGui.QApplication.UnicodeUTF8))
 
 
     # Helper functions.
@@ -239,18 +223,20 @@ class Ui_MainWindow(object):
             return
 
     def right_click(self):
-        self.buttonMenu.exec_(QtGui.QCursor.pos())
+        qtMenu = self.sender().qtMenu
+        qtMenu.exec_(QtGui.QCursor.pos())
 
     def _new_tab(self, tab_name):
-        #
-        # Setup new tab.
+        # Tab widget.
         newTab = QtGui.QWidget()
         newTab.setObjectName(tab_name)
         newTab.text = tab_name
+        # Scroll area.
         scrollArea = QtGui.QScrollArea(newTab)
         scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
         scrollArea.setWidgetResizable(True)
         scrollArea.setObjectName(tab_name+'_s')
+        # Contents widget.
         scrollAreaContents = QtGui.QWidget(scrollArea)
         scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
         scrollAreaContents.setMinimumSize(QtCore.QSize(10, 470))
@@ -265,22 +251,38 @@ class Ui_MainWindow(object):
         self.tabs[tab_name+'_b'] = {}
         self.tabs[tab_name+'_s'] = scrollArea
         self.tabs[tab_name+'_c'] = scrollAreaContents
-        #setattr(self, tab_name, newTab) #???
         #
 
     def _new_button(self, tab_name, file_name):
         #
-        # Prepair scroll area.
-        self.tabs[tab_name+'_s'].setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
+        # Set minimum size for container.
+        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
         #
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        pushButton.setGeometry( QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60) )
+        pushButton.setGeometry(QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60))
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
-        QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
+        #
+        # Setup Menu + add Actions.
+        pushButton.qtMenu = QtGui.QMenu()
+        self.actionView.triggered.connect(self.on_view)
+        pushButton.qtMenu.addAction(self.actionView)
+        self.actionEdit.triggered.connect(self.on_edit)
+        pushButton.qtMenu.addAction(self.actionEdit)
+        self.actionCopy.triggered.connect(self.on_copy)
+        pushButton.qtMenu.addAction(self.actionCopy)
+        self.actionDelete.triggered.connect(self.on_delete)
+        pushButton.qtMenu.addAction(self.actionDelete)
+        self.actionRename.triggered.connect(self.on_rename)
+        pushButton.qtMenu.addAction(self.actionRename)
+        self.actionProperties.triggered.connect(self.on_properties)
+        pushButton.qtMenu.addAction(self.actionProperties)
+        #
+        # Connect events.
         pushButton.clicked.connect(self.double_click)
+        QtCore.QObject.connect(pushButton, QtCore.SIGNAL("customContextMenuRequested(QPoint)"), self.right_click)
         pushButton.setStatusTip(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
         pushButton.setText(QtGui.QApplication.translate("MainWindow", file_name, None, QtGui.QApplication.UnicodeUTF8))
         #
@@ -336,42 +338,46 @@ class Ui_MainWindow(object):
         print( 'Triggered REFRESH !' )
 
     def on_help(self):
-        print( 'Triggered HELP !' )
+        QtGui.QMessageBox.information(self.centralwidget, "Private Briefcase Help",
+            "<br>Please check <b>Online Help</b> : http://code.google.com/p/private-briefcase/w/<br>")
 
     def on_about(self):
-        print( 'Triggered ABOUT !' )
+        QtGui.QMessageBox.about(self.centralwidget, "About Private Briefcase",
+            "<br><b>Copyright © 2009-2010</b>, Cristi Constantin. All rights reserved.<br>"
+            "<b>Website</b> : http://private-briefcase.googlecode.com<br>")
 
     def on_view(self):
-        clickedButton = self.centralwidget.sender()
-        print( 'Triggered VIEW on %s !' % clickedButton )
-        self.b.ExportFile(str(clickedButton.text()), execute=True)
+        qtA = self.sender()
+        print( 'Triggered VIEW on %s !' % qtA )
+        self.b.ExportFile(str(qtA.text()), execute=True)
 
     def on_edit(self):
-        clickedButton = self.centralwidget.sender()
-        print( 'Triggered EDIT on %s !' % clickedButton )
-        #self.b.ExportFile(str(clickedButton.text()), execute=True)
+        qtA = self.sender()
+        print( 'Triggered EDIT on %s !' % qtA )
+        #self.b.ExportFile(str(qtA.text()), execute=True)
 
     def on_copy(self):
-        print( 'Triggered COPY !' )
+        qtA = self.sender()
+        print( 'Triggered COPY on %s !' % qtA )
 
     def on_delete(self):
-        print( 'Triggered DELETE !' )
+        qtA = self.sender()
+        print( 'Triggered DELETE on %s !' % qtA )
 
     def on_rename(self):
-        print( 'Triggered RENAME !' )
+        qtA = self.sender()
+        print( 'Triggered RENAME on %s !' % qtA )
 
     def on_properties(self):
-        print( 'Triggered PROPERTIES !' )
+        qtA = self.sender()
+        print( 'Triggered PROPERTIES on %s !' % qtA )
 
 
 import res_rc
 
 app = QtGui.QApplication([])
-window = QtGui.QMainWindow()
-ui = Ui_MainWindow()
-ui.setupUi(window)
-
+window = MainWindow()
 window.show()
-exit(app.exec_())
+sys.exit(app.exec_())
 
 #Eof()
