@@ -46,7 +46,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__(parent)
         #
         global WStyle
-        # B name, B name _b, B name _c, B name _s
+        # B name, B name _b, B name _bs, B name _c, B name _s
         self.tabs = {}
         #
         self.resize(800, 600)
@@ -188,7 +188,6 @@ class MainWindow(QtGui.QMainWindow):
         self.actionProperties.setObjectName("actionProperties")
         self.actionProperties.setText("Properties")
         #
-        '''
         # Setup Menu + add Actions.
         self.qtMenu = QtGui.QMenu()
         self.actionView.triggered.connect(self.on_view)
@@ -203,7 +202,6 @@ class MainWindow(QtGui.QMainWindow):
         self.qtMenu.addAction(self.actionRename)
         self.actionProperties.triggered.connect(self.on_properties)
         self.qtMenu.addAction(self.actionProperties)
-        '''
         #
         # Setup double click timer.
         self.dblClickTimer = QtCore.QTimer()
@@ -242,14 +240,19 @@ class MainWindow(QtGui.QMainWindow):
             return
 
     def right_click(self):
-        qtM = self.sender().qtMenu
-        qtM.exec_(self.cursor().pos())
-        #self.qtMenu.exec_(self.cursor().pos())
+        #
+        p = self.cursor().pos()
+        tab_name = str(self.tabWidget.currentWidget().objectName())
+        # Save button name.
+        self.tabs[tab_name+'_bs'] = self.childAt(self.mapFromGlobal(p)).objectName()
+        # Execute menu.
+        self.qtMenu.exec_(self.cursor().pos())
+        #
 
     def _new_tab(self, tab_name):
         #
         # Tab widget.
-        newTab = QtGui.QWidget()
+        newTab = QtGui.QWidget(self.tabWidget)
         newTab.setObjectName(tab_name)
         # Scroll area.
         scrollArea = QtGui.QScrollArea(newTab)
@@ -267,6 +270,7 @@ class MainWindow(QtGui.QMainWindow):
         # Add tab to dictionary.
         self.tabs[tab_name] = newTab
         self.tabs[tab_name+'_b'] = {}
+        self.tabs[tab_name+'_bs'] = []
         self.tabs[tab_name+'_s'] = scrollArea
         self.tabs[tab_name+'_c'] = scrollAreaContents
         #
@@ -283,22 +287,6 @@ class MainWindow(QtGui.QMainWindow):
         pushButton.setObjectName(file_name)
         pushButton.setStatusTip(file_name)
         pushButton.setText(file_name)
-        #
-        # Setup Menu + add Actions.
-        qtMenu = QtGui.QMenu(pushButton)
-        self.actionView.triggered.connect(self.on_view)
-        qtMenu.addAction(self.actionView)
-        self.actionEdit.triggered.connect(self.on_edit)
-        qtMenu.addAction(self.actionEdit)
-        self.actionCopy.triggered.connect(self.on_copy)
-        qtMenu.addAction(self.actionCopy)
-        self.actionDelete.triggered.connect(self.on_delete)
-        qtMenu.addAction(self.actionDelete)
-        self.actionRename.triggered.connect(self.on_rename)
-        qtMenu.addAction(self.actionRename)
-        self.actionProperties.triggered.connect(self.on_properties)
-        qtMenu.addAction(self.actionProperties)
-        #
         # Connect events.
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
@@ -345,7 +333,7 @@ class MainWindow(QtGui.QMainWindow):
             #
             self.b.AddFile(str(elem))
             #
-            tab_name = self.tabWidget.currentWidget().text
+            tab_name = str(self.tabWidget.currentWidget().objectName())
             file_name = os.path.split(str(elem))[1]
             self._new_button(tab_name, file_name)
             #
@@ -363,14 +351,23 @@ class MainWindow(QtGui.QMainWindow):
             "<b>Website</b> : http://private-briefcase.googlecode.com<br>")
 
     def on_view(self):
-        qtA = self.sender()
-        print( 'Triggered VIEW on %s !' % qtA )
-        self.b.ExportFile(str(qtA.text()), execute=True)
+        tab_name = str(self.tabWidget.currentWidget().objectName())
+        # If caller is an action.
+        if type(self.sender()) == type(QtGui.QPushButton()):
+            self.b.ExportFile(str(self.sender().text()), execute=True)
+        # If is a button.
+        else:
+            qtBS = self.tabs[tab_name+'_bs']
+            self.b.ExportFile(str(qtBS), execute=True)
+            del qtBS
+        del tab_name
 
     def on_edit(self):
-        qtA = self.sender()
-        print( 'Triggered EDIT on %s !' % qtA )
-        #self.b.ExportFile(str(qtA.text()), execute=True)
+        tab_name = str(self.tabWidget.currentWidget().objectName())
+        # This is the selected button.
+        qtBS = self.tabs[tab_name+'_bs']
+        self.b.ExportFile(str(qtBS), execute=True)
+        del qtBS, tab_name
 
     def on_copy(self):
         qtA = self.sender()
