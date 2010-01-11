@@ -15,7 +15,6 @@ import glob
 import sqlite3
 import zlib
 import tempfile
-import hashlib
 from time import clock
 from time import strftime
 
@@ -49,30 +48,40 @@ class Briefcase:
 
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
-        md5 = hashlib.md5(password)
+        self.pwd = password
+        md4 = MD4.new(password)
+        pwd_hash = md4.hexdigest()
 
         if exists_db:
-            self.pwd = self.c.execute('select pwd from prv').fetchone()[0]
-            if self.pwd != md5.hexdigest():
+            # Test user password versus database password.
+            if pwd_hash != self.c.execute('select pwd from prv').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
-            self.pwd = md5.hexdigest()
-            # Prv table contains the passwords and the original names of the files.
-            self.c.execute('create table prv (pwd TEXT, file TEXT unique)')
-            self.c.execute('insert into prv (pwd) values (?)', [self.pwd])
+            # Create prv table with passwords and original names of the files.
+            self.c.execute('create table prv (pwd BLOB, file TEXT unique)')
+            self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd_hash, None])
             self.conn.commit()
         #
+
+
+    def _normalize_16(self, L):
+        return 'X' * ((((L/16)+1)*16)-L)
 
 
     def _transformb(self, bdata, pwd=''):
         '''
         Transforms any binary data into ready-to-write SQL information. \n\
         '''
-        if not pwd: pwd = self.pwd
-        crypt = AES.new(pwd)
         vCompressed = zlib.compress(bdata,9)
-        L = len(vCompressed)
-        vCrypt = crypt.encrypt(vCompressed + 'X' * ((((L/16)+1)*16)-L))
+        # If password is None or False, do not encrypt.
+        if pwd == False: return buffer(vCompressed)
+        # If password is null in some way, encrypt with default normalized.
+        elif not pwd: pwd = self.pwd + self._normalize_16(len(self.pwd))
+        # If password is provided, normalize it to 16 characters.
+        elif pwd: pwd += self._normalize_16(len(pwd))
+        # Now crypt and return.
+        crypt = AES.new(pwd)
+        vCrypt = crypt.encrypt(vCompressed + self._normalize_16(len(vCompressed)))
         return buffer(vCrypt)
 
 
@@ -80,7 +89,13 @@ class Briefcase:
         '''
         Restores binary data from SQL information. \n\
         '''
-        if not pwd: pwd = self.pwd
+        # If password is None or False, simply decompress.
+        if pwd == False: return zlib.decompress(bdata)
+        # If password is null in some way, decrypt with default normalized.
+        elif not pwd: pwd = self.pwd + self._normalize_16(len(self.pwd))
+        # If password is provided, normalize it to 16 characters.
+        elif pwd: pwd += self._normalize_16(len(pwd))
+        # Now decrypt and return.
         crypt = AES.new(pwd)
         vCompressed = crypt.decrypt(bdata)
         return zlib.decompress(vCompressed)
@@ -89,44 +104,61 @@ class Briefcase:
     def AddFile(self, filepath, password='', versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
-        Table name is MD4 Hexdigest of the file name (lower case). \n\
-        Each row contains : Version, Raw-data, Hash of original data, date and time, user name. \n\
-        Raw-data is : original binary data -> crypted -> compressed. \n\
+        Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
+        Each row contains : Version, Raw-data, Hash of original data, Date and Time, User Name. \n\
+        Raw-data is : original binary data -> compressed -> crypted. \n\
         Versionable=False checks if the file is in the database. If it is, an error is raised
         and the file is not added. \n\
         '''
         ti = clock()
         fpath = filepath.lower()
-        md4 = MD4.new( os.path.split(fpath)[1] )
-        filename = 't'+md4.hexdigest()
-        del md4
 
-        if not os.path.exists(filepath):
+        if not os.path.exists(fpath):
             self.lastErrorMsg = 'Func AddFile: file path "%s" doesn\'t exist!' % filepath
             return -1
 
-        # Try to create the table.
-        try:
-            self.c.execute('create table %s (version integer primary key asc, raw BLOB, hash TEXT,'
-                'date TEXT, user TEXT)' % filename)
-        # If the table is already created and versionable is false, raise error and exit. Else, pass.
-        except:
+        # If password is false, pass.
+        if password == False:
+            pass
+        # If password is null in some way, it must become None.
+        elif not password:
+            password = None
+        # If password exists, create its hash.
+        else:
+            md4 = MD4.new(password)
+            pwd_hash = md4.hexdigest()
+            del md4
+
+        md4 = MD4.new( os.path.split(fpath)[1] )
+        filename = 't'+md4.hexdigest()
+        del md4
+        old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fpath).fetchone()
+
+        # If file exists in DB and user provided a password.
+        if old_pwd_hash and password:
+            old_pwd_hash = old_pwd_hash[0]
+            # If password from user is differend from password in DB, exit.
+            if old_pwd_hash != pwd_hash:
+                self.lastErrorMsg = 'Func AddFile: The password is INCORRECT! You will not be able '\
+                    'to encrypt any data!'
+                return -1
+        # If file exists in DB ...
+        elif old_pwd_hash:
+            # ... and versionable is False, exit.
             if not versionable:
                 self.lastErrorMsg = 'Func AddFile: you selected versionable=False, so no new version '\
                     'will be added!'
                 return -1
 
+        self.c.execute('create table if not exists %s (version integer primary key asc, raw BLOB,'\
+            'hash TEXT, date TEXT, user TEXT)' % filename)
+
         # Read and transform all binary data.
         f = open(filepath, 'rb').read()
-        # If a password is defined, use it.
-        if password:
-            md5 = hashlib.md5(password)
-            pwd = md5.hexdigest()
-            raw = self._transformb(f, pwd)
-        # If not, compress with normal password.
-        else:
-            raw = self._transformb(f)
+        # This is the raw data.
+        raw = self._transformb(f, password)
         md4 = MD4.new(f)
+        # This is the hash of the original file.
         hash = md4.hexdigest()
         del f, md4
 
@@ -139,10 +171,14 @@ class Briefcase:
 
         self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % filename), [raw, hash,
             strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
-        if password:
-            self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [pwd, os.path.split(fpath)[1]])
+
+        # If password is None, or password is False.
+        if not password:
+            self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [password, os.path.split(fpath)[1]])
+        # If password is provided by user, insert its hash in prv table.
         else:
-            self.c.execute('insert or ignore into prv (file) values (?)', [os.path.split(fpath)[1]])
+            self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [pwd_hash, os.path.split(fpath)[1]])
+        # Everything is fine, save.
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
@@ -180,12 +216,13 @@ class Briefcase:
     def CopyIntoNew(self, fname, version, new_fname):
         '''
         Copy one version of one file, into a new file, that will have version 1. \n\
+        The password will be the same as the original file. \n\
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
             or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
             or ('|' in new_fname):
-            self.lastErrorMsg = 'Func CopyIntoNew: a filename cannot contain any of the following '\
+            self.lastErrorMsg = 'Func CopyIntoNew: a file name cannot contain any of the following '\
                 'characters  \\ / : * ? " < > |'
             return -1
 
@@ -196,14 +233,18 @@ class Briefcase:
         new_filename = 't'+md4.hexdigest()
         del md4
 
-        if self.c.execute('select * from prv where file="%s"' % (new_fname.lower())).fetchone():
+        if version < 0 : version = 0
+
+        # If new file name already exists, exit.
+        if self.c.execute('select file from prv where file="%s"' % (new_fname.lower())).fetchone():
             self.lastErrorMsg = 'Func CopyIntoNew: there is already a file called "%s"!' % new_fname
             return -1
 
+        # Try to extract specified version.
         try:
             self.c.execute('select version from %s' % filename).fetchone()
         except:
-            self.lastErrorMsg = 'Func CopyIntoNew: cannot find the file called "%s"!' % fname
+            self.lastErrorMsg = 'Func CopyIntoNew: there is no such file called "%s"!' % fname
             return -1
 
         data = self.c.execute('select raw, hash from %s where version=%i' % (filename, version)).fetchone()
@@ -212,19 +253,17 @@ class Briefcase:
         self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % new_filename),
             [data[0], data[1], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
-        # Use original password of file.
+        # Use original password of file. It can be False, None or some hash string.
         pwd = self.c.execute('select pwd from prv where file="%s"' % (fname.lower())).fetchone()
         if pwd:
             pwd = pwd[0]
-        else:
-            pwd = None
 
         self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd, new_fname.lower()])
         self.lastDebugMsg = 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti)
         return 0
 
 
-    def ExportFile(self, fname, path='', version=0, password='', execute=False):
+    def ExportFile(self, fname, password='', version=0, path='', execute=False):
         '''
         Call one file from the briefcase. \n\
         If version is not null, that specific version is used. Else, it's the most recent version. \n\
@@ -236,6 +275,8 @@ class Briefcase:
         filename = 't'+md4.hexdigest()
         del md4
 
+        if version < 0 : version = 0
+
         if path and not os.path.exists(path):
             self.lastErrorMsg = 'Func ExportFile: path "%s" doesn\'t exist!' % path
             return -1
@@ -243,14 +284,11 @@ class Briefcase:
         # If version is a positive number, get that version.
         if version > 0:
             try:
-                selected_version = self.c.execute('select raw from %s order by version desc where '
-                    ' version=%s' % (filename, version)).fetchone()
+                selected_version = self.c.execute('select raw from %s where version=%s' %
+                    (filename, version)).fetchone()
             except:
-                selected_version = False
-            # If the version doesn't exist, exit.
-            if not selected_version:
-                self.lastErrorMsg = 'Func ExportFile: cannot find version "%i" for file "%s"!'\
-                    % (version, fname)
+                self.lastErrorMsg = 'Func ExportFile: cannot find version "%i" for file "%s"!' %\
+                    (version, fname)
                 return -1
         # Else, get the latest version.
         else:
@@ -258,9 +296,6 @@ class Briefcase:
                 selected_version = self.c.execute('select raw from %s order by version desc' %
                     filename).fetchone()
             except:
-                selected_version = False
-            # If the file doesn't exist, exit.
-            if not selected_version:
                 self.lastErrorMsg = 'Func ExportFile: cannot find the file called "%s"!' % fname
                 return -1
 
@@ -272,20 +307,33 @@ class Briefcase:
             filename = f + '\\' + filename + os.path.splitext(fname)[1]
             del f
 
-        w = open(filename, 'wb')
+        # Get file password hash. It can be False, None or some hash string.
+        old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fname.lower()).fetchone()
+        if old_pwd_hash: old_pwd_hash = old_pwd_hash[0]
+
         if password:
-            md5 = hashlib.md5(password)
-            pwd = md5.hexdigest()
-            try:
-                w.write(self._restoreb(selected_version[0], pwd))
-            except:
-                self.lastErrorMsg = 'Func ExportFile: wrong password!'
-                if not path:
-                    dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
-                    for dir in dirs: shutil.rmtree(dir)
-                return -1
+            # Hash user password.
+            md4 = MD4.new(password)
+            pwd_hash = md4.hexdigest()
+            del md4
         else:
-            w.write(self._restoreb(selected_version[0]))
+            pwd_hash = self.pwd
+
+        # If old hash is not null and is differend from user pwd hash, exit.
+        # Or if old hash is null and is differend from user pwd, exit.
+        if (old_pwd_hash and old_pwd_hash != pwd_hash) or ((not old_pwd_hash) and old_pwd_hash != password):
+            self.lastErrorMsg = 'Func ExportFile: The password is INCORRECT! You will not be able '\
+                'to decrypt any data!'
+            # Delete any leftover temp files.
+            if not path:
+                dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
+                try:
+                    for dir in dirs: shutil.rmtree(dir)
+                except: pass
+            return -1
+
+        w = open(filename, 'wb')
+        w.write(self._restoreb(selected_version[0], password))
         w.close() ; del w
         self.lastDebugMsg = 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti)
 
@@ -293,10 +341,12 @@ class Briefcase:
         if execute:
             os.system('"%s"&exit' % filename)
             os.remove(filename)
-        # If not path, delete the temp folders.
+        # If not path, delete all temp folders.
         if not path:
             dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
-            for dir in dirs: shutil.rmtree(dir)
+            try:
+                for dir in dirs: shutil.rmtree(dir)
+            except: pass
         return 0
 
 
@@ -313,24 +363,25 @@ class Briefcase:
             return -1
 
         if password:
-            md5 = hashlib.md5(password)
-            pwd = md5.hexdigest()
+            md4 = MD4.new(password)
+            pwd_hash = md4.hexdigest()
+            del md4
 
-        all_files = self.c.execute('select file from prv order by file').fetchall()[1:]
+        all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
         for temp_file in all_files:
             md4 = MD4.new(temp_file[0])
             filename = 't'+md4.hexdigest()
-            latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
             filename = path + '\\' + temp_file[0]
             w = open(filename, 'wb')
-            if password:
-                try:
-                    w.write(self._restoreb(latest_version[0], pwd))
-                except:
-                    self.lastErrorMsg = 'Func ExportAll: wrong password!'
-                    return -1
-            else:
-                w.write(self._restoreb(latest_version[0]))
+            # Get file password hash.
+            old_pwd_hash = temp_file[1]
+            if old_pwd_hash != pwd_hash:
+                self.lastErrorMsg = 'Func ExportAll: The password is INCORRECT! You will not be able '\
+                    'to decrypt any data!'
+                continue
+            # At this point, password is correct.
+            latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
+            w.write(self._restoreb(latest_version[0], password))
             w.close()
 
         self.lastDebugMsg = 'Exporting all files took %.4f sec.' % (clock()-ti)
