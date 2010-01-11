@@ -8,7 +8,12 @@ from briefcase import Briefcase
 b = Briefcase('Data.prv', '0123456789abcQW')
 
 # Adding a few files.
-ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\*.jpg', 'some pwd')
+ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg') or b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
+if not ret : print( b.lastDebugMsg )
+else : print( b.lastErrorMsg )
+
+# Adding a few files.
+ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', 'some pwd')
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
@@ -18,12 +23,7 @@ print( b.GetFileList() )
 print
 
 # Add another file.
-ret = b.AddFile('readme.txt', 'pass')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
-
-# Add identical file.
-ret = b.AddFile('readme.txt')
+ret = b.AddFile('GPL v3.txt', 'pass')
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
@@ -69,13 +69,13 @@ ret = b.DelFile('to_delete2.jpg')
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
-# Execute add1.
-ret = b.ExportFile('readme.txt', path='d:', password='pass', execute=False)
+# Execute add 1.
+ret = b.ExportFile('GPL v3.txt', path='d:', password='pass', execute=False)
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 
-# Execute addmany.
-ret = b.ExportFile('to_execute.jpg', path='d:', password='some pwd', execute=False)
+# Execute add many.
+ret = b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
 if not ret : print( b.lastDebugMsg )
 else : print( b.lastErrorMsg )
 

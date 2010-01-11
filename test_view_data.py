@@ -5,7 +5,7 @@ from Crypto.Hash import MD4
 conn = sqlite3.connect('Data.prv')
 c = conn.cursor()
 
-for line in c.execute('select * from prv').fetchmany(5):
+for line in c.execute('select * from prv').fetchmany(8):
     if not line[0] : file1 = line[1]
     print( line )
 
