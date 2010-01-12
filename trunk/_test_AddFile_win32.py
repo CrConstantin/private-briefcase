@@ -7,56 +7,36 @@ from briefcase import Briefcase
 # Creating Briefcase instance.
 b = Briefcase('Data.prv', 'default PWD')
 
-# Add file with password.
-ret = b.AddFile('readme.txt', 'my pwd')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd file with password.' )
+b.AddFile('readme.txt', 'my pwd')
 
-# Add file with wrong password.
-ret = b.AddFile('readme.txt', 'wrong pwd')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd file with wrong password.' )
+b.AddFile('readme.txt', 'wrong pwd')
 
-# Add identical file with correct password.
-ret = b.AddFile('readme.txt', 'my pwd')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd identical file with correct password.' )
+b.AddFile('readme.txt', 'my pwd')
 
-# Add identical file without password.
-ret = b.AddFile('readme.txt')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd identical file without password.' )
+b.AddFile('readme.txt')
 
-# Add inexisting file.
-ret = b.AddFile('qwerty.txt')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd inexisting file.' )
+b.AddFile('qwerty.txt')
 
-# Export file 1.
-ret = b.ExportFile('readme.txt', password='my pwd', execute=True)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nExport file 1.' )
+b.ExportFile('readme.txt', password='my pwd', execute=True)
 
-# Add file with ZERO password.
-ret = b.AddFile('GPL v3.txt', False)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd file with ZERO password.' )
+b.AddFile('GPL v3.txt', False)
 
-# Add file with ZERO password again.
-ret = b.AddFile('GPL v3.txt', False)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd file with ZERO password again.' )
+b.AddFile('GPL v3.txt', False)
 
-# Export file 2.
-ret = b.ExportFile('GPL v3.txt', password=False, execute=True)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nExport file 2.' )
+b.ExportFile('GPL v3.txt', password=False, execute=True)
 
-# Print file list.
-print
+print( '\nPrint file list.' )
 print( b.GetFileList() )
-print
 
-print( 'Done !' )
+print( '\nDone !' )
 
 # Eof()

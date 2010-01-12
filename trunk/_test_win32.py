@@ -7,78 +7,48 @@ from briefcase import Briefcase
 # Creating Briefcase instance.
 b = Briefcase('Data.prv', '0123456789abcQW')
 
-# Adding a few files.
-ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg') or b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdding a few files.' )
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg') or b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
 
-# Adding a few files.
-ret = b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', 'some pwd')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdding a few More files...' )
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', 'some pwd')
 
-# Print file list.
-print
+print( '\nPrinting file list.' )
 print( b.GetFileList() )
-print
 
-# Add another file.
-ret = b.AddFile('GPL v3.txt', 'pass')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nAdd single file.' )
+b.AddFile('GPL v3.txt', 'pass')
 
-# Rename.
-ret = b.RenFile('bliss.jpg', 'to_delete.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nRename one Bliss file.' )
+b.RenFile('bliss.jpg', 'to_delete.jpg')
 
-# Properties.
-print
-ret = b.GetProperties('to_delete.jpg')
-if ret!=-1 : print( ret )
-else : print( b.lastErrorMsg )
-print
+print( '\nCopy Bliss file, renamed as "to_delete".' )
+b.CopyIntoNew('to_delete.jpg', 1, 'to_execute.jpg')
 
-# Copy.
-ret = b.CopyIntoNew('to_delete.jpg', 1, 'to_execute.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nCopy previously copied file, just to make sure.' )
+b.CopyIntoNew('to_execute.jpg', 1, 'to_delete2.jpg')
 
-# Copy again, just to make sure. :)
-ret = b.CopyIntoNew('to_execute.jpg', 1, 'to_delete2.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nTry to copy inexistent file.' )
+b.CopyIntoNew('asd.jpg', 1, 'copy_error.jpg')
 
-# Copy error.
-ret = b.CopyIntoNew('asd.jpg', 1, 'copy_error.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nGet properties for copied/ copied/ renamed file.' )
+print(b.GetProperties('to_delete2.jpg'))
 
-# Delete.
-ret = b.DelFile('to_delete.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nDelete one file.' )
+b.DelFile('to_delete.jpg')
 
-# Delete error.
-ret = b.DelFile('to_delete.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nTry to delete inexistent file.' )
+b.DelFile('to_delete.jpg')
 
-# Delete again.
-ret = b.DelFile('to_delete2.jpg')
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nDelete another file.' )
+b.DelFile('to_delete2.jpg')
 
-# Execute add 1.
-ret = b.ExportFile('GPL v3.txt', path='d:', password='pass', execute=False)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nExport one file.' )
+b.ExportFile('GPL v3.txt', path='d:', password='pass', execute=False)
 
-# Execute add many.
-ret = b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
-if not ret : print( b.lastDebugMsg )
-else : print( b.lastErrorMsg )
+print( '\nExport another file.' )
+b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
 
-print( 'Done !' )
+print( '\nDone !' )
 
 # Eof()
