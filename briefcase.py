@@ -263,7 +263,11 @@ class Briefcase:
             self._log(2, 'Func CopyIntoNew: there is no such file called "%s"!' % fname)
             return -1
 
-        data = self.c.execute('select raw, hash from %s where version=%i' % (filename, version)).fetchone()
+        if version:
+            data = self.c.execute('select raw, hash from %s where version=%i' % (filename, version)).fetchone()
+        else:
+            data = self.c.execute('select raw, hash from %s order by version desc' % filename).fetchone()
+
         self.c.execute('create table %s (version integer primary key asc, raw BLOB, hash TEXT,'
             'date TEXT, user TEXT)' % new_filename)
         self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % new_filename),
