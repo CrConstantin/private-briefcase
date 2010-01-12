@@ -38,8 +38,7 @@ class Briefcase:
         '''
         #
         self.database = str(database)
-        self.lastErrorMsg = ''
-        self.lastDebugMsg = ''
+        self.verbose = 2
         #
         if os.path.exists(self.database):
             exists_db = True
@@ -101,6 +100,22 @@ class Briefcase:
         return zlib.decompress(vCompressed)
 
 
+    def _log(self, level, msg):
+        '''
+        Prints debug and error messages. \n\
+        '''
+        if self.verbose <= 0:
+            # Don't print anything.
+            return
+        elif self.verbose == 1:
+            # Only errors are printed.
+            if level == 2:
+                print( msg )
+        elif self.verbose == 2:
+            # All messages are printed.
+            print( msg )
+
+
     def AddFile(self, filepath, password='', versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
@@ -114,7 +129,7 @@ class Briefcase:
         fpath = filepath.lower()
 
         if not os.path.exists(fpath):
-            self.lastErrorMsg = 'Func AddFile: file path "%s" doesn\'t exist!' % filepath
+            self._log(2, 'Func AddFile: file path "%s" doesn\'t exist!' % filepath)
             return -1
 
         # If password is false, pass.
@@ -139,15 +154,15 @@ class Briefcase:
             old_pwd_hash = old_pwd_hash[0]
             # If password from user is differend from password in DB, exit.
             if old_pwd_hash != pwd_hash:
-                self.lastErrorMsg = 'Func AddFile: The password is INCORRECT! You will not be able '\
-                    'to encrypt any data!'
+                self._log(2, 'Func AddFile: The password is INCORRECT! You will not be able to '\
+                    'encrypt any data!')
                 return -1
         # If file exists in DB ...
         elif old_pwd_hash:
             # ... and versionable is False, exit.
             if not versionable:
-                self.lastErrorMsg = 'Func AddFile: you selected versionable=False, so no new version '\
-                    'will be added!'
+                self._log(2, 'Func AddFile: you selected versionable=False, so no new version '\
+                    'will be added!')
                 return -1
 
         self.c.execute('create table if not exists %s (version integer primary key asc, raw BLOB,'\
@@ -165,8 +180,8 @@ class Briefcase:
         # Check if the new file is identical with the latest version.
         old_hash = self.c.execute('select hash from %s order by version desc' % filename).fetchone()
         if old_hash and hash == old_hash[0]:
-            self.lastErrorMsg = 'Func AddFile: file "%s" is IDENTICAL with the version stored in the '\
-                'database!' % os.path.split(fpath)[1]
+            self._log(2, 'Func AddFile: file "%s" is IDENTICAL with the version stored in the '\
+                'database!' % os.path.split(fpath)[1])
             return -1
 
         self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % filename), [raw, hash,
@@ -182,7 +197,7 @@ class Briefcase:
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
-        self.lastDebugMsg = 'Adding file "%s" version "%i" took %.4f sec.' % (filepath, ver_max[0], clock()-ti)
+        self._log(1, 'Adding file "%s" version "%i" took %.4f sec.' % (filepath, ver_max[0], clock()-ti))
         return 0
 
 
@@ -198,18 +213,18 @@ class Briefcase:
         pathreg = pathregex.replace('[', '[[]') # Fix possible bug in Windows ?
 
         if not os.path.exists(path):
-            self.lastErrorMsg = 'Func AddManyFiles: path "%s" doesn\'t exist!' % path
+            self._log(2, 'Func AddManyFiles: path "%s" doesn\'t exist!' % path)
             return -1
 
         files = glob.glob(pathreg)
 
         if not len(files):
-            self.lastErrorMsg = 'Func AddManyFiles: there are no files to match "%s"!' % pathregex
+            self._log(2, 'Func AddManyFiles: there are no files to match "%s"!' % pathregex)
             return -1
         for file in files:
             self.AddFile(file, password, versionable)
 
-        self.lastDebugMsg = 'Added %i files in %.4f sec.' % (len(files), clock()-ti)
+        self._log(1, 'Added %i files in %.4f sec.' % (len(files), clock()-ti))
         return 0
 
 
@@ -222,8 +237,8 @@ class Briefcase:
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
             or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
             or ('|' in new_fname):
-            self.lastErrorMsg = 'Func CopyIntoNew: a file name cannot contain any of the following '\
-                'characters  \\ / : * ? " < > |'
+            self._log(2, 'Func CopyIntoNew: a file name cannot contain any of the following '\
+                'characters  \\ / : * ? " < > |')
             return -1
 
         md4 = MD4.new( fname.lower() )
@@ -237,14 +252,14 @@ class Briefcase:
 
         # If new file name already exists, exit.
         if self.c.execute('select file from prv where file="%s"' % (new_fname.lower())).fetchone():
-            self.lastErrorMsg = 'Func CopyIntoNew: there is already a file called "%s"!' % new_fname
+            self._log(2, 'Func CopyIntoNew: there is already a file called "%s"!' % new_fname)
             return -1
 
         # Try to extract specified version.
         try:
             self.c.execute('select version from %s' % filename).fetchone()
         except:
-            self.lastErrorMsg = 'Func CopyIntoNew: there is no such file called "%s"!' % fname
+            self._log(2, 'Func CopyIntoNew: there is no such file called "%s"!' % fname)
             return -1
 
         data = self.c.execute('select raw, hash from %s where version=%i' % (filename, version)).fetchone()
@@ -259,7 +274,7 @@ class Briefcase:
             pwd = pwd[0]
 
         self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd, new_fname.lower()])
-        self.lastDebugMsg = 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti)
+        self._log(1, 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
         return 0
 
 
@@ -278,7 +293,7 @@ class Briefcase:
         if version < 0 : version = 0
 
         if path and not os.path.exists(path):
-            self.lastErrorMsg = 'Func ExportFile: path "%s" doesn\'t exist!' % path
+            self._log(2, 'Func ExportFile: path "%s" doesn\'t exist!' % path)
             return -1
 
         # If version is a positive number, get that version.
@@ -287,8 +302,8 @@ class Briefcase:
                 selected_version = self.c.execute('select raw from %s where version=%s' %
                     (filename, version)).fetchone()
             except:
-                self.lastErrorMsg = 'Func ExportFile: cannot find version "%i" for file "%s"!' %\
-                    (version, fname)
+                self._log(2, 'Func ExportFile: cannot find version "%i" for file "%s"!' %\
+                    (version, fname))
                 return -1
         # Else, get the latest version.
         else:
@@ -296,7 +311,7 @@ class Briefcase:
                 selected_version = self.c.execute('select raw from %s order by version desc' %
                     filename).fetchone()
             except:
-                self.lastErrorMsg = 'Func ExportFile: cannot find the file called "%s"!' % fname
+                self._log(2, 'Func ExportFile: cannot find the file called "%s"!' % fname)
                 return -1
 
         # If the path is specified, use it. Else, use a temp dir.
@@ -322,8 +337,8 @@ class Briefcase:
         # If old hash is not null and is differend from user pwd hash, exit.
         # Or if old hash is null and is differend from user pwd, exit.
         if (old_pwd_hash and old_pwd_hash != pwd_hash) or ((not old_pwd_hash) and old_pwd_hash != password):
-            self.lastErrorMsg = 'Func ExportFile: The password is INCORRECT! You will not be able '\
-                'to decrypt any data!'
+            self._log(2, 'Func ExportFile: The password is INCORRECT! You will not be able to '\
+                'decrypt any data!')
             # Delete any leftover temp files.
             if not path:
                 dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
@@ -335,7 +350,7 @@ class Briefcase:
         w = open(filename, 'wb')
         w.write(self._restoreb(selected_version[0], password))
         w.close() ; del w
-        self.lastDebugMsg = 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti)
+        self._log(1, 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti))
 
         # If execute, call the file, then delete it.
         if execute:
@@ -359,7 +374,7 @@ class Briefcase:
         ti = clock()
         #
         if not os.path.exists(path):
-            self.lastErrorMsg = 'Func ExportAll: path "%s" doesn\'t exist!' % path
+            self._log(2, 'Func ExportAll: path "%s" doesn\'t exist!' % path)
             return -1
 
         if password:
@@ -376,15 +391,15 @@ class Briefcase:
             # Get file password hash.
             old_pwd_hash = temp_file[1]
             if old_pwd_hash != pwd_hash:
-                self.lastErrorMsg = 'Func ExportAll: The password is INCORRECT! You will not be able '\
-                    'to decrypt any data!'
+                self._log(2, 'Func ExportAll: The password is INCORRECT! You will not be able to '\
+                    'decrypt any data!')
                 continue
             # At this point, password is correct.
             latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
             w.write(self._restoreb(latest_version[0], password))
             w.close()
 
-        self.lastDebugMsg = 'Exporting all files took %.4f sec.' % (clock()-ti)
+        self._log(1, 'Exporting all files took %.4f sec.' % (clock()-ti))
         return 0
 
 
@@ -396,8 +411,8 @@ class Briefcase:
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
             or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
             or ('|' in new_fname):
-            self.lastErrorMsg = 'Func RenFile: a filename cannot contain any of the following characters '\
-                ' \\ / : * ? " < > |'
+            self._log(2, 'Func RenFile: a filename cannot contain any of the following characters '\
+                ' \\ / : * ? " < > |')
             return -1
 
         md4 = MD4.new( fname.lower() )
@@ -408,16 +423,16 @@ class Briefcase:
         del md4
 
         if self.c.execute('select * from prv where file="%s"' % (new_fname.lower())).fetchone():
-            self.lastErrorMsg = 'Func RenFile: there is already a file called "%s"!' % new_fname
+            self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
             self.c.execute('update prv set file="%s" where file="%s"' % (new_filename, filename))
-            self.lastDebugMsg = 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti)
+            self._log(1, 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
             return 0
         except:
-            self.lastErrorMsg = 'Func RenFile: cannot find the file called "%s"!' % fname
+            self._log(2, 'Func RenFile: cannot find the file called "%s"!' % fname)
             return -1
 
 
@@ -435,16 +450,17 @@ class Briefcase:
         if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
-            self.lastDebugMsg = 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti)
+            self._log(1, 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti))
+            return 0
         else:
             try:
                 self.c.execute('drop table %s' % filename)
                 self.c.execute('delete from prv where file="%s"' % fname.lower())
                 self.conn.commit()
-                self.lastDebugMsg = 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti)
+                self._log(1, 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
                 return 0
             except:
-                self.lastErrorMsg = 'Func DelFile: cannot find the file called "%s"!' % fname
+                self._log(2, 'Func DelFile: cannot find the file called "%s"!' % fname)
                 return -1
 
 
@@ -471,11 +487,11 @@ class Briefcase:
                 filename).fetchone()[0]
             versions = len( self.c.execute('select version from %s' % filename).fetchall() )
             #
-            self.lastDebugMsg = 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti)
+            self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
             return {'fileName':fname, 'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
                 'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser, 'versions':versions}
         except:
-            self.lastErrorMsg = 'Func GetProperties: cannot find the file called "%s"!' % fname
+            self._log(2, 'Func GetProperties: cannot find the file called "%s"!' % fname)
             return -1
 
 
@@ -489,7 +505,7 @@ class Briefcase:
         lf = []
         for elem in li:
             lf.append(elem[0])
-        self.lastDebugMsg = 'Get file list took %.4f sec.' % (clock()-ti)
+        self._log(1, 'Get file list took %.4f sec.' % (clock()-ti))
         return lf
 
 
