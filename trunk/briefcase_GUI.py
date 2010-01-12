@@ -94,18 +94,18 @@ class MainWindow(QtGui.QMainWindow):
         self.actionJoin.setIcon(icon2)
         self.actionJoin.setObjectName("actionJoin")
         self.actionJoin.setText("Join")
-        self.actionAdd_file = QtGui.QAction(self)
+        self.actionAdd_files = QtGui.QAction(self)
         icon3 = QtGui.QIcon()
         icon3.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAdd_file.setIcon(icon3)
-        self.actionAdd_file.setObjectName("actionAdd_file")
-        self.actionAdd_file.setText("Add file")
-        self.actionAdd_many = QtGui.QAction(self)
+        self.actionAdd_files.setIcon(icon3)
+        self.actionAdd_files.setObjectName("actionAdd_files")
+        self.actionAdd_files.setText("Add files")
+        self.actionProperties = QtGui.QAction(self)
         icon4 = QtGui.QIcon()
         icon4.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add-Many.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAdd_many.setIcon(icon4)
-        self.actionAdd_many.setObjectName("actionAdd_many")
-        self.actionAdd_many.setText("Add many")
+        self.actionProperties.setIcon(icon4)
+        self.actionProperties.setObjectName("actionProperties")
+        self.actionProperties.setText("Properties")
         self.actionRefresh = QtGui.QAction(self)
         icon5 = QtGui.QIcon()
         icon5.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -139,10 +139,10 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionOpen)
         self.actionJoin.triggered.connect(self.on_join)
         toolBar.addAction(self.actionJoin)
-        self.actionAdd_file.triggered.connect(self.on_add)
-        toolBar.addAction(self.actionAdd_file)
-        self.actionAdd_many.triggered.connect(self.on_add)
-        toolBar.addAction(self.actionAdd_many)
+        self.actionAdd_files.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAdd_files)
+        self.actionProperties.triggered.connect(self.on_db_properties)
+        toolBar.addAction(self.actionProperties)
         self.actionRefresh.triggered.connect(self.on_refresh)
         toolBar.addAction(self.actionRefresh)
         self.actionHelp.triggered.connect(self.on_help)
@@ -269,6 +269,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), tab_name)
         # Add tab to dictionary.
         self.tabs[tab_name] = newTab
+        #self.tabs[tab_name+'_pb'] = None
         self.tabs[tab_name+'_b'] = {}
         self.tabs[tab_name+'_bs'] = []
         self.tabs[tab_name+'_s'] = scrollArea
@@ -303,7 +304,7 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
-        self.b = Briefcase(input, '0123456789abcQW')
+        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW')
         self._new_tab(tab_name)
         #
 
@@ -313,10 +314,10 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
-        self.b = Briefcase(input, '0123456789abcQW')
+        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW')
         self._new_tab(tab_name)
         #
-        for file_name in self.b.GetFileList():
+        for file_name in self.tabs[tab_name+'_pb'].GetFileList():
             self._new_button(tab_name, file_name)
         #
 
@@ -328,10 +329,11 @@ class MainWindow(QtGui.QMainWindow):
         f = QtGui.QFileDialog()
         input = f.getOpenFileNames(self.centralwidget, 'Add files in briefcase', os.getcwd(), 'All files (*.*)')
         if not input : return
+        tab_name = str(self.tabWidget.currentWidget().objectName())
         #
         for elem in input:
             #
-            self.b.AddFile(str(elem))
+            self.tabs[tab_name+'_pb'].AddFile(str(elem))
             #
             tab_name = str(self.tabWidget.currentWidget().objectName())
             file_name = os.path.split(str(elem))[1]
@@ -340,6 +342,12 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_refresh(self):
         print( 'Triggered REFRESH !' )
+
+    def on_db_properties(self):
+        tab_name = str(self.tabWidget.currentWidget().objectName())
+        info = '<br>'.join(self.tabs[tab_name+'_pb'].GetFileList())
+        QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % tab_name, info)
+        del info, tab_name
 
     def on_help(self):
         QtGui.QMessageBox.information(self.centralwidget, "Private Briefcase Help",
@@ -354,24 +362,31 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName())
         # If caller is an action.
         if type(self.sender()) == type(QtGui.QPushButton()):
-            self.b.ExportFile(str(self.sender().text()), execute=True)
+            self.tabs[tab_name+'_pb'].ExportFile(str(self.sender().text()), execute=True)
         # If is a button.
         else:
-            qtBS = self.tabs[tab_name+'_bs']
-            self.b.ExportFile(str(qtBS), execute=True)
+            qtBS = str(self.tabs[tab_name+'_bs'])
+            self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
             del qtBS
         del tab_name
 
     def on_edit(self):
         tab_name = str(self.tabWidget.currentWidget().objectName())
         # This is the selected button.
-        qtBS = self.tabs[tab_name+'_bs']
-        self.b.ExportFile(str(qtBS), execute=True)
+        qtBS = str(self.tabs[tab_name+'_bs'])
+        self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
         del qtBS, tab_name
 
     def on_copy(self):
-        qtA = self.sender()
-        print( 'Triggered COPY on %s !' % qtA )
+        tab_name = str(self.tabWidget.currentWidget().objectName())
+        # This is the selected button.
+        qtBS = str(self.tabs[tab_name+'_bs'])
+        qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
+            'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
+        if qtMsg == 0: # Clicked yes.
+            ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of %s' % qtBS)
+            if ret==0: self._new_button(tab_name, 'copy of %s' % qtBS)
+        del qtBS, tab_name
 
     def on_delete(self):
         qtA = self.sender()
