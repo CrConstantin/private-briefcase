@@ -221,6 +221,7 @@ class Briefcase:
         if not len(files):
             self._log(2, 'Func AddManyFiles: there are no files to match "%s"!' % pathregex)
             return -1
+
         for file in files:
             self.AddFile(file, password, versionable)
 
@@ -336,7 +337,7 @@ class Briefcase:
 
         # If old hash is not null and is differend from user pwd hash, exit.
         # Or if old hash is null and is differend from user pwd, exit.
-        if (old_pwd_hash and old_pwd_hash != pwd_hash) or ((not old_pwd_hash) and old_pwd_hash != password):
+        if (old_pwd_hash and old_pwd_hash != pwd_hash):
             self._log(2, 'Func ExportFile: The password is INCORRECT! You will not be able to '\
                 'decrypt any data!')
             # Delete any leftover temp files.
@@ -391,8 +392,8 @@ class Briefcase:
             # Get file password hash.
             old_pwd_hash = temp_file[1]
             if old_pwd_hash != pwd_hash:
-                self._log(2, 'Func ExportAll: The password is INCORRECT! You will not be able to '\
-                    'decrypt any data!')
+                self._log(2, 'Func ExportAll: Password for file "%s" is INCORRECT! You will not be '\
+                    'able to decrypt any data!' % temp_file)
                 continue
             # At this point, password is correct.
             latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
@@ -526,6 +527,7 @@ if __name__ == '__main__':
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=True, help="Prints the version.")
     parser.add_option("--db", dest="database", help="The name of the briefcase file.")
     parser.add_option("--pwd", "--pass", dest="password", help="The password of the briefcase file.")
+
     parser.add_option("--addfile", action="store", nargs=2, help="-.")
     parser.add_option("--addmanyfiles", action="store", nargs=2, help="-.")
     parser.add_option("--copyintonew", action="store", nargs=3, help="-.")

@@ -8,7 +8,7 @@ from briefcase import Briefcase
 b = Briefcase('Data.prv', '0123456789abcQW')
 
 print( '\nAdding a few files.' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg') or b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
 
 print( '\nAdding a few More files...' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', 'some pwd')
@@ -19,7 +19,7 @@ print( b.GetFileList() )
 print( '\nAdd single file.' )
 b.AddFile('GPL v3.txt', 'pass')
 
-print( '\nRename one Bliss file.' )
+print( '\nRename "bliss" file.' )
 b.RenFile('bliss.jpg', 'to_delete.jpg')
 
 print( '\nCopy Bliss file, renamed as "to_delete".' )
