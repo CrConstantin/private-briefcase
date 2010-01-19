@@ -242,11 +242,9 @@ class MainWindow(QtGui.QMainWindow):
     def right_click(self):
         #
         p = self.cursor().pos()
-        tab_name = str(self.tabWidget.currentWidget().objectName())
-        # Save button name.
-        self.tabs[tab_name+'_bs'] = self.childAt(self.mapFromGlobal(p)).objectName()
-        # Execute menu.
-        self.qtMenu.exec_(self.cursor().pos())
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        self.tabs[tab_name+'_bs'] = self.childAt(self.mapFromGlobal(p)).objectName() # Selected button.
+        self.qtMenu.exec_(self.cursor().pos()) # Execute menu.
         #
 
     def _new_tab(self, tab_name):
@@ -326,10 +324,15 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_add(self):
         #
+        try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        except :
+            QtGui.QMessageBox.critical(self.centralwidget, "Error on Add",
+                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            return
+        #
         f = QtGui.QFileDialog()
         input = f.getOpenFileNames(self.centralwidget, 'Add files in briefcase', os.getcwd(), 'All files (*.*)')
         if not input : return
-        tab_name = str(self.tabWidget.currentWidget().objectName())
         #
         for elem in input:
             #
@@ -341,10 +344,21 @@ class MainWindow(QtGui.QMainWindow):
             #
 
     def on_refresh(self):
+        #
+        try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        except :
+            QtGui.QMessageBox.critical(self.centralwidget, "Error on Refresh",
+                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            return
         print( 'Triggered REFRESH !' )
+        #
 
     def on_db_properties(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
+        try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        except :
+            QtGui.QMessageBox.critical(self.centralwidget, "Error on Properties",
+                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            return
         info = '<br>'.join(self.tabs[tab_name+'_pb'].GetFileList())
         QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % tab_name, info)
         del info, tab_name
@@ -359,11 +373,11 @@ class MainWindow(QtGui.QMainWindow):
             "<b>Website</b> : http://private-briefcase.googlecode.com<br>")
 
     def on_view(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         # If caller is an action.
         if type(self.sender()) == type(QtGui.QPushButton()):
             self.tabs[tab_name+'_pb'].ExportFile(str(self.sender().text()), execute=True)
-        # If is a button.
+        # If caller is a button.
         else:
             qtBS = str(self.tabs[tab_name+'_bs'])
             self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
@@ -371,32 +385,40 @@ class MainWindow(QtGui.QMainWindow):
         del tab_name
 
     def on_edit(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
-        # This is the selected button.
-        qtBS = str(self.tabs[tab_name+'_bs'])
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
         del qtBS, tab_name
 
     def on_copy(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
-        # This is the selected button.
-        qtBS = str(self.tabs[tab_name+'_bs'])
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
             'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
         if qtMsg == 0: # Clicked yes.
             ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of %s' % qtBS)
-            if ret==0: self._new_button(tab_name, 'copy of %s' % qtBS)
+            if ret==0: # If Briefcase returns 0, create new button.
+                self._new_button(tab_name, 'copy of %s' % qtBS)
         del qtBS, tab_name
 
     def on_delete(self):
-        qtA = self.sender()
-        print( 'Triggered DELETE on %s !' % qtA )
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
+        qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Delete file ? ...',
+            'Are you sure you want to delete "%s" ?' % qtBS, 'Yes', 'No')
+        if qtMsg == 0: # Clicked yes.
+            ret = self.tabs[tab_name+'_pb'].DelFile(fname=qtBS, version=0)
+            if ret==0: # If Briefcase returns 0, delete the button.
+                self.tabs[tab_name+'_b'][qtBS].close()
+        del qtBS, tab_name
 
     def on_rename(self):
+        # ... not yet implemented.
         qtA = self.sender()
         print( 'Triggered RENAME on %s !' % qtA )
 
     def on_properties(self):
+        # ... not yet implemented.
         qtA = self.sender()
         print( 'Triggered PROPERTIES on %s !' % qtA )
 
