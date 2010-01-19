@@ -212,16 +212,16 @@ class MainWindow(QtGui.QMainWindow):
 
     # Helper functions.
     def calculate_x(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
-        lx = len(self.tabs[tab_name+'_b']) % 7
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        lx = len(self.tabs[tab_name+'_btns']) % 7
         if not lx:
             return 10
         else:
             return 10 + (10+95)*lx
 
     def calculate_y(self):
-        tab_name = str(self.tabWidget.currentWidget().objectName())
-        ly = len(self.tabs[tab_name+'_b']) // 7
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        ly = len(self.tabs[tab_name+'_btns']) // 7
         if not ly:
             return 10
         else:
@@ -266,12 +266,11 @@ class MainWindow(QtGui.QMainWindow):
         self.tabWidget.addTab(newTab, "")
         self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), tab_name)
         # Add tab to dictionary.
-        self.tabs[tab_name] = newTab
-        #self.tabs[tab_name+'_pb'] = None
-        self.tabs[tab_name+'_b'] = {}
-        self.tabs[tab_name+'_bs'] = []
-        self.tabs[tab_name+'_s'] = scrollArea
-        self.tabs[tab_name+'_c'] = scrollAreaContents
+        self.tabs[tab_name] = newTab                  # Tab widget.
+        self.tabs[tab_name+'_btns'] = {}              # Buttons from this tab.
+        self.tabs[tab_name+'_bs'] = []                # Selected buttons.
+        self.tabs[tab_name+'_s'] = scrollArea         # Scroll area.
+        self.tabs[tab_name+'_c'] = scrollAreaContents # Contents.
         #
 
     def _new_button(self, tab_name, file_name):
@@ -290,7 +289,7 @@ class MainWindow(QtGui.QMainWindow):
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
         # Add button to dictionary.
-        self.tabs[tab_name+'_b'][file_name] = pushButton
+        self.tabs[tab_name+'_btns'][file_name] = pushButton
         pushButton.show()
         #
 
@@ -302,8 +301,9 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
-        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW')
+        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
         self._new_tab(tab_name)
+        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Enable new tab.
         #
 
     def on_open(self):
@@ -312,8 +312,9 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(), 'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
-        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW')
+        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
         self._new_tab(tab_name)
+        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Enable new tab.
         #
         for file_name in self.tabs[tab_name+'_pb'].GetFileList():
             self._new_button(tab_name, file_name)
@@ -369,7 +370,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_about(self):
         QtGui.QMessageBox.about(self.centralwidget, "About Private Briefcase",
-            "<br><b>Copyright © 2009-2010</b>, Cristi Constantin. All rights reserved.<br>"
+            "<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>"
             "<b>Website</b> : http://private-briefcase.googlecode.com<br>")
 
     def on_view(self):
@@ -396,9 +397,9 @@ class MainWindow(QtGui.QMainWindow):
         qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
             'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
         if qtMsg == 0: # Clicked yes.
-            ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of %s' % qtBS)
+            ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
             if ret==0: # If Briefcase returns 0, create new button.
-                self._new_button(tab_name, 'copy of %s' % qtBS)
+                self._new_button(tab_name, 'copy of '+qtBS)
         del qtBS, tab_name
 
     def on_delete(self):
@@ -409,7 +410,7 @@ class MainWindow(QtGui.QMainWindow):
         if qtMsg == 0: # Clicked yes.
             ret = self.tabs[tab_name+'_pb'].DelFile(fname=qtBS, version=0)
             if ret==0: # If Briefcase returns 0, delete the button.
-                self.tabs[tab_name+'_b'][qtBS].close()
+                self.tabs[tab_name+'_btns'][qtBS].close()
         del qtBS, tab_name
 
     def on_rename(self):
