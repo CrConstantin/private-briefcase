@@ -389,39 +389,58 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
-        del qtBS, tab_name
+        del tab_name, qtBS,
 
     def on_copy(self):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
             'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
-        if qtMsg == 0: # Clicked yes.
+        if qtMsg==0: # Clicked yes.
             ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
             if ret==0: # If Briefcase returns 0, create new button.
                 self._new_button(tab_name, 'copy of '+qtBS)
-        del qtBS, tab_name
+        del tab_name, qtBS, qtMsg
 
     def on_delete(self):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
-        qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Delete file ? ...',
+        qtMsg = QtGui.QMessageBox.warning(self.centralwidget, 'Delete file ? ...',
             'Are you sure you want to delete "%s" ?' % qtBS, 'Yes', 'No')
-        if qtMsg == 0: # Clicked yes.
+        if qtMsg==0: # Clicked yes.
             ret = self.tabs[tab_name+'_pb'].DelFile(fname=qtBS, version=0)
             if ret==0: # If Briefcase returns 0, delete the button.
                 self.tabs[tab_name+'_btns'][qtBS].close()
-        del qtBS, tab_name
+        del tab_name, qtBS, qtMsg
 
     def on_rename(self):
-        # ... not yet implemented.
-        qtA = self.sender()
-        print( 'Triggered RENAME on %s !' % qtA )
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
+        qtTxt, qtMsg = QtGui.QInputDialog.getText(self.centralwidget, 'Rename file ? ...',
+            "New name :", QtGui.QLineEdit.Normal, qtBS)
+        if qtMsg and str(qtTxt): # Clicked yes and text exists.
+            ret = self.tabs[tab_name+'_pb'].RenFile(fname=qtBS, new_fname=str(qtTxt))
+            if ret==0: # If Briefcase returns 0, rename the button.
+                self.tabs[tab_name+'_btns'][qtBS].setObjectName(qtTxt)
+                self.tabs[tab_name+'_btns'][qtBS].setStatusTip(qtTxt)
+                self.tabs[tab_name+'_btns'][qtBS].setText(qtTxt)
+                self.tabs[tab_name+'_btns'][str(qtTxt)] = self.tabs[tab_name+'_btns'][qtBS]
+                del self.tabs[tab_name+'_btns'][qtBS]
+        del tab_name, qtBS, qtMsg, qtTxt
 
     def on_properties(self):
-        # ... not yet implemented.
-        qtA = self.sender()
-        print( 'Triggered PROPERTIES on %s !' % qtA )
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
+        prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
+        QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % qtBS, '''
+            <br>fileName : %(fileName)s
+            <br>internFileName : %(internFileName)s
+            <br>firstFileDate : %(firstFileDate)s
+            <br>lastFileDate : %(lastFileDate)s
+            <br>firstFileUser : %(firstFileUser)s
+            <br>lastFileUser : %(lastFileUser)s
+            <br>versions : %(versions)i''' % prop)
+        del tab_name, qtBS, prop
 
 
 import res_rc

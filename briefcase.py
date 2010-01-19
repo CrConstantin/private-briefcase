@@ -435,7 +435,8 @@ class Briefcase:
 
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
-            self.c.execute('update prv set file="%s" where file="%s"' % (new_filename, filename))
+            self.c.execute('update prv set file = ? where file = ?', [new_fname, fname])
+            self.conn.commit()
             self._log(1, 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
             return 0
         except:
@@ -457,6 +458,7 @@ class Briefcase:
         if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
+            self.conn.commit()
             self._log(1, 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti))
             return 0
         else:
@@ -495,8 +497,9 @@ class Briefcase:
             versions = len( self.c.execute('select version from %s' % filename).fetchall() )
             #
             self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
-            return {'fileName':fname, 'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
-                'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser, 'versions':versions}
+            return {'fileName':fname, 'internFileName':filename, 'firstFileDate':firstFileDate,
+                'lastFileDate':lastFileDate, 'firstFileUser':firstFileUser,
+                'lastFileUser':lastFileUser, 'versions':versions}
         except:
             self._log(2, 'Func GetProperties: cannot find the file called "%s"!' % fname)
             return -1
