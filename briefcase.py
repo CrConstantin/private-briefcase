@@ -279,6 +279,8 @@ class Briefcase:
             pwd = pwd[0]
 
         self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd, new_fname.lower()])
+        self.conn.commit()
+
         self._log(1, 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
         return 0
 
