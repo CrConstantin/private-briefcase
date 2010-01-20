@@ -166,8 +166,10 @@ class Briefcase:
                 return -1
 
         self.c.execute('create table if not exists %s (version integer primary key asc, raw BLOB,'\
-            'hash TEXT, date TEXT, user TEXT)' % filename)
+            'hash TEXT, size INTEGER, date TEXT, user TEXT)' % filename)
 
+        # Get file size.
+        size = os.path.getsize(filepath)
         # Read and transform all binary data.
         f = open(filepath, 'rb').read()
         # This is the raw data.
@@ -184,8 +186,8 @@ class Briefcase:
                 'database!' % os.path.split(fpath)[1])
             return -1
 
-        self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % filename), [raw, hash,
-            strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+        self.c.execute(('insert into %s (raw, hash, size, date, user) values (?,?,?,?,?)' % filename),
+            [raw, hash, size, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # If password is None, or password is False.
         if not password:
@@ -264,14 +266,16 @@ class Briefcase:
             return -1
 
         if version:
-            data = self.c.execute('select raw, hash from %s where version=%i' % (filename, version)).fetchone()
+            data = self.c.execute('select raw, hash, size from %s where version=%i' % (filename, version)
+                ).fetchone()
         else:
-            data = self.c.execute('select raw, hash from %s order by version desc' % filename).fetchone()
+            data = self.c.execute('select raw, hash, size from %s order by version desc' % filename
+                ).fetchone()
 
         self.c.execute('create table %s (version integer primary key asc, raw BLOB, hash TEXT,'
-            'date TEXT, user TEXT)' % new_filename)
-        self.c.execute(('insert into %s (raw, hash, date, user) values (?,?,?,?)' % new_filename),
-            [data[0], data[1], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+            'size INTEGER, date TEXT, user TEXT)' % new_filename)
+        self.c.execute(('insert into %s (raw, hash, size, date, user) values (?,?,?,?,?)' % new_filename),
+            [data[0], data[1], data[2], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # Use original password of file. It can be False, None or some hash string.
         pwd = self.c.execute('select pwd from prv where file="%s"' % (fname.lower())).fetchone()
@@ -486,6 +490,11 @@ class Briefcase:
         del md4
 
         try:
+            # Size.
+            firstFileSize = self.c.execute('select size from %s order by version asc' %
+                filename).fetchone()[0]
+            lastFileSize = self.c.execute('select size from %s order by version desc' %
+                filename).fetchone()[0]
             firstFileDate = self.c.execute('select date from %s order by version asc' %
                 filename).fetchone()[0]
             lastFileDate = self.c.execute('select date from %s order by version desc' %
@@ -497,9 +506,11 @@ class Briefcase:
             versions = len( self.c.execute('select version from %s' % filename).fetchall() )
             #
             self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
-            return {'fileName':fname, 'internFileName':filename, 'firstFileDate':firstFileDate,
-                'lastFileDate':lastFileDate, 'firstFileUser':firstFileUser,
-                'lastFileUser':lastFileUser, 'versions':versions}
+            return {'fileName':fname, 'internFileName':filename,
+                'firstFileSize':firstFileSize, 'lastFileSize':lastFileSize,
+                'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
+                'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser,
+                'versions':versions}
         except:
             self._log(2, 'Func GetProperties: cannot find the file called "%s"!' % fname)
             return -1
