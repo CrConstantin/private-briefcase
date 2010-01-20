@@ -48,6 +48,7 @@ class MainWindow(QtGui.QMainWindow):
         global WStyle
         # B name, B name _b, B name _bs, B name _c, B name _s
         self.tabs = {}
+        self.sort = 'name'
         #
         self.resize(800, 600)
         QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
@@ -211,21 +212,39 @@ class MainWindow(QtGui.QMainWindow):
 
 
     # Helper functions.
-    def calculate_x(self):
+    def calculate_x(self, offset=-1):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
-        lx = len(self.tabs[tab_name+'_btns']) % 7
+        if offset<0: offset = len(self.tabs[tab_name+'_btns'])
+        lx = offset % 7
         if not lx:
             return 10
         else:
             return 10 + (10+95)*lx
+        #
 
-    def calculate_y(self):
+    def calculate_y(self, offset=-1):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
-        ly = len(self.tabs[tab_name+'_btns']) // 7
+        if offset<0: offset = len(self.tabs[tab_name+'_btns'])
+        ly = offset // 7
         if not ly:
             return 10
         else:
             return 10 + (10+60)*ly
+        #
+
+    def sort_btns(self):
+        #
+        tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        #
+        index = 0
+        for qtBtn in sorted(self.tabs[tab_name+'_btns'], key=lambda k: k.lower()):
+            self.tabs[tab_name+'_btns'][qtBtn].move(self.calculate_x(index), self.calculate_y(index))
+            index += 1
+        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(10, self.calculate_y(index-1)+70))
+        del index
+        #
 
     def double_click(self):
         # If after receiving the first click, the timer isn't running, start the timer and return.
@@ -238,6 +257,7 @@ class MainWindow(QtGui.QMainWindow):
             self.on_view()
             self.dblClickTimer.stop() # Stop timer so next click can start it again.
             return
+        #
 
     def right_click(self):
         #
@@ -280,7 +300,7 @@ class MainWindow(QtGui.QMainWindow):
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        pushButton.setGeometry(QtCore.QRect(self.calculate_x(), self.calculate_y(), 95, 60))
+        pushButton.setGeometry(self.calculate_x(), self.calculate_y(), 95, 60)
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
         pushButton.setStatusTip(file_name)
@@ -303,7 +323,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = os.path.split(str(input).title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
         self._new_tab(tab_name)
-        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Enable new tab.
+        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
         #
 
     def on_open(self):
@@ -314,7 +334,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = os.path.split(str(input).title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
         self._new_tab(tab_name)
-        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Enable new tab.
+        self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
         #
         for file_name in self.tabs[tab_name+'_pb'].GetFileList():
             self._new_button(tab_name, file_name)
@@ -352,6 +372,7 @@ class MainWindow(QtGui.QMainWindow):
                 "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
             return
         print( 'Triggered REFRESH !' )
+        self.sort_btns()
         #
 
     def on_db_properties(self):
@@ -389,7 +410,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
-        del tab_name, qtBS,
+        del tab_name, qtBS
 
     def on_copy(self):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
@@ -400,6 +421,7 @@ class MainWindow(QtGui.QMainWindow):
             ret = self.tabs[tab_name+'_pb'].CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
             if ret==0: # If Briefcase returns 0, create new button.
                 self._new_button(tab_name, 'copy of '+qtBS)
+                self.sort_btns()
         del tab_name, qtBS, qtMsg
 
     def on_delete(self):
@@ -411,6 +433,8 @@ class MainWindow(QtGui.QMainWindow):
             ret = self.tabs[tab_name+'_pb'].DelFile(fname=qtBS, version=0)
             if ret==0: # If Briefcase returns 0, delete the button.
                 self.tabs[tab_name+'_btns'][qtBS].close()
+                del self.tabs[tab_name+'_btns'][qtBS]
+                self.sort_btns()
         del tab_name, qtBS, qtMsg
 
     def on_rename(self):
@@ -426,7 +450,8 @@ class MainWindow(QtGui.QMainWindow):
                 self.tabs[tab_name+'_btns'][qtBS].setText(qtTxt)
                 self.tabs[tab_name+'_btns'][str(qtTxt)] = self.tabs[tab_name+'_btns'][qtBS]
                 del self.tabs[tab_name+'_btns'][qtBS]
-        del tab_name, qtBS, qtMsg, qtTxt
+                self.sort_btns()
+        del tab_name, qtBS, qtTxt, qtMsg
 
     def on_properties(self):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
