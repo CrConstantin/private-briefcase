@@ -433,13 +433,15 @@ class MainWindow(QtGui.QMainWindow):
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
         QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % qtBS, '''
-            <br>fileName : %(fileName)s
-            <br>internFileName : %(internFileName)s
-            <br>firstFileDate : %(firstFileDate)s
-            <br>lastFileDate : %(lastFileDate)s
-            <br>firstFileUser : %(firstFileUser)s
-            <br>lastFileUser : %(lastFileUser)s
-            <br>versions : %(versions)i''' % prop)
+            <br><b>fileName</b> : %(fileName)s
+            <br><b>internFileName</b> : %(internFileName)s
+            <br><b>firstFileSize</b> : %(firstFileSize)i
+            <br><b>lastFileSize</b> : %(lastFileSize)i
+            <br><b>firstFileDate</b> : %(firstFileDate)s
+            <br><b>lastFileDate</b> : %(lastFileDate)s
+            <br><b>firstFileUser</b> : %(firstFileUser)s
+            <br><b>lastFileUser</b> : %(lastFileUser)s
+            <br><b>versions</b> : %(versions)i''' % prop)
         del tab_name, qtBS, prop
 
 
