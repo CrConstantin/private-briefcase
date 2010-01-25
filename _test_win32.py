@@ -49,6 +49,10 @@ b.ExportFile('GPL v3.txt', path='d:', password='pass', execute=False)
 print( '\nExport another file.' )
 b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
 
+print( '\nExport all.' )
+b.ExportAll('temp', 'some pwd')
+b.ExportAll('temp', 'pass')
+
 print( '\nPrinting file list for the last time.' )
 print( b.GetFileList() )
 
