@@ -392,20 +392,24 @@ class Briefcase:
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
             del md4
+        else:
+            pwd_hash = self.pwd
 
         all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
+
         for temp_file in all_files:
-            md4 = MD4.new(temp_file[0])
-            filename = 't'+md4.hexdigest()
-            filename = path + '\\' + temp_file[0]
-            w = open(filename, 'wb')
-            # Get file password hash.
-            old_pwd_hash = temp_file[1]
-            if old_pwd_hash != pwd_hash:
-                self._log(2, 'Func ExportAll: Password for file "%s" is INCORRECT! You will not be '\
-                    'able to decrypt any data!' % temp_file)
+            # Temp_file[0] is pwd, Temp_file[1] is fname.
+            # If provided password != stored password...
+            if temp_file[0] != pwd_hash:
+                self._log(2, 'Func ExportAll: Password for file "%s" is INCORRECT! You will not be'\
+                    ' able to decrypt any data!' % temp_file[1])
                 continue
+
             # At this point, password is correct.
+            fname = path + '\\' + temp_file[1]
+            w = open(fname, 'wb')
+            md4 = MD4.new(temp_file[1])
+            filename = 't'+md4.hexdigest()
             latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
             w.write(self._restoreb(latest_version[0], password))
             w.close()
