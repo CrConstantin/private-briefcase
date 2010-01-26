@@ -388,17 +388,19 @@ class Briefcase:
             self._log(2, 'Func ExportAll: path "%s" doesn\'t exist!' % path)
             return -1
 
-        if password:
-            md4 = MD4.new(password)
-            pwd_hash = md4.hexdigest()
-            del md4
-        else:
-            pwd_hash = self.pwd
+        if not password:
+            password = self.pwd
+
+        md4 = MD4.new(password)
+        pwd_hash = md4.hexdigest()
+        del md4
 
         all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
 
         for temp_file in all_files:
             # Temp_file[0] is pwd, Temp_file[1] is fname.
+            if not temp_file[0]:
+                temp_file = pwd_hash, temp_file[1]
             # If provided password != stored password...
             if temp_file[0] != pwd_hash:
                 self._log(2, 'Func ExportAll: Password for file "%s" is INCORRECT! You will not be'\
