@@ -5,7 +5,7 @@ from glob import glob
 from briefcase import Briefcase
 
 # Creating Briefcase instance.
-b = Briefcase('DataAdd.prv', 'default PWD')
+b = Briefcase('DataAdd.prv', False)
 
 print( '\nok - Add file with password.' )
 b.AddFile('readme.txt', 'my pwd')
