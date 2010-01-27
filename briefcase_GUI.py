@@ -280,7 +280,7 @@ class MainWindow(QtGui.QMainWindow):
         # Contents widget.
         scrollAreaContents = QtGui.QWidget(scrollArea)
         scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
-        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 470))
+        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 468))
         scrollAreaContents.setObjectName(tab_name+'_c')
         scrollArea.setWidget(scrollAreaContents)
         self.tabWidget.addTab(newTab, "")
@@ -363,6 +363,9 @@ class MainWindow(QtGui.QMainWindow):
             file_name = os.path.split(str(elem))[1]
             self._new_button(tab_name, file_name)
             #
+        #
+        self.sort_btns()
+        #
 
     def on_refresh(self):
         #

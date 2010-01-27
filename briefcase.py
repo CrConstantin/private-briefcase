@@ -48,8 +48,12 @@ class Briefcase:
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
         self.pwd = password
-        md4 = MD4.new(password)
-        pwd_hash = md4.hexdigest()
+
+        if password != False:
+            md4 = MD4.new(password)
+            pwd_hash = md4.hexdigest()
+        else:
+            pwd_hash = False
 
         if exists_db:
             # Test user password versus database password.
@@ -75,7 +79,11 @@ class Briefcase:
         # If password is None or False, do not encrypt.
         if pwd == False: return buffer(vCompressed)
         # If password is null in some way, encrypt with default normalized.
-        elif not pwd: pwd = self.pwd + self._normalize_16(len(self.pwd))
+        elif not pwd:
+            if self.pwd == False:
+                return buffer(vCompressed)
+            else:
+                pwd = self.pwd + self._normalize_16(len(self.pwd))
         # If password is provided, normalize it to 16 characters.
         elif pwd: pwd += self._normalize_16(len(pwd))
         # Now crypt and return.
@@ -91,7 +99,11 @@ class Briefcase:
         # If password is None or False, simply decompress.
         if pwd == False: return zlib.decompress(bdata)
         # If password is null in some way, decrypt with default normalized.
-        elif not pwd: pwd = self.pwd + self._normalize_16(len(self.pwd))
+        elif not pwd:
+            if self.pwd == False:
+                return zlib.decompress(bdata)
+            else:
+                pwd = self.pwd + self._normalize_16(len(self.pwd))
         # If password is provided, normalize it to 16 characters.
         elif pwd: pwd += self._normalize_16(len(pwd))
         # Now decrypt and return.
@@ -337,17 +349,16 @@ class Briefcase:
         old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fname.lower()).fetchone()
         if old_pwd_hash: old_pwd_hash = old_pwd_hash[0]
 
+        # If password exists, make hash.
         if password:
-            # Hash user password.
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
             del md4
         else:
-            pwd_hash = self.pwd
+            pwd_hash = password
 
-        # If old hash is not null and is differend from user pwd hash, exit.
-        # Or if old hash is null and is differend from user pwd, exit.
-        if (old_pwd_hash and old_pwd_hash != pwd_hash):
+        # If provided password != stored password...
+        if old_pwd_hash != pwd_hash:
             self._log(2, 'Func ExportFile: The password is INCORRECT! You will not be able to '\
                 'decrypt any data!')
             # Delete any leftover temp files.
@@ -388,19 +399,19 @@ class Briefcase:
             self._log(2, 'Func ExportAll: path "%s" doesn\'t exist!' % path)
             return -1
 
-        if not password:
-            password = self.pwd
-
-        md4 = MD4.new(password)
-        pwd_hash = md4.hexdigest()
-        del md4
+        # If password exists, make hash.
+        if password:
+            md4 = MD4.new(password)
+            pwd_hash = md4.hexdigest()
+            del md4
+        # If password is false, hash is false.
+        else:
+            pwd_hash = password
 
         all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
 
+        # Temp_file[0] = pwd, Temp_file[1] = fname.
         for temp_file in all_files:
-            # Temp_file[0] is pwd, Temp_file[1] is fname.
-            if not temp_file[0]:
-                temp_file = pwd_hash, temp_file[1]
             # If provided password != stored password...
             if temp_file[0] != pwd_hash:
                 self._log(2, 'Func ExportAll: Password for file "%s" is INCORRECT! You will not be'\
