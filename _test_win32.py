@@ -7,11 +7,14 @@ from briefcase import Briefcase
 # Creating Briefcase instance.
 b = Briefcase('Data.prv', '0123456789abcQW')
 
-print( '\nAdding a few files.' )
+print( '\nAdding a few files with default pass.' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
 
-print( '\nAdding a few More files...' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', 'some pwd')
+print( '\nAdding a few More files with False pass.' )
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', False)
+
+print( '\nAdding a More files with password.' )
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd')
 
 print( '\nPrinting file list.' )
 print( b.GetFileList() )
@@ -50,8 +53,10 @@ print( '\nExport another file.' )
 b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
 
 print( '\nExport all.' )
-b.ExportAll('temp', 'some pwd')
-b.ExportAll('temp', 'pass')
+b.ExportAll('temp') # With default pass.
+b.ExportAll('temp', False) # With false pass.
+b.ExportAll('temp', 'pwd') # With password 1.
+b.ExportAll('temp', 'pass') # With password 2.
 
 print( '\nPrinting file list for the last time.' )
 print( b.GetFileList() )
