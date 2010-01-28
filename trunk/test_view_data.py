@@ -4,14 +4,17 @@ from Crypto.Hash import MD4
 
 conn = sqlite3.connect('Data.prv')
 c = conn.cursor()
+lines = c.execute('select * from prv').fetchall()
 
-for line in c.execute('select * from prv').fetchmany(20):
-    if not line[0] : file1 = line[1]
+for line in lines:
     print( line )
 
 print
-md4 = MD4.new( file1 )
+md4 = MD4.new( lines[1][1] )
 filename = 't'+md4.hexdigest()
+print c.execute('select * from %s' % filename).fetchone()
 
-for line in c.execute('select * from %s' % filename).fetchmany(10):
-    print( line )
+print
+md4 = MD4.new( lines[2][1] )
+filename = 't'+md4.hexdigest()
+print c.execute('select * from %s' % filename).fetchone()

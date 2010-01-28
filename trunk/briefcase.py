@@ -34,6 +34,7 @@ class Briefcase:
         Create new Database, or connect to an old Database. \n\
         If you don't know the correct password, you cannot acces the crypted data from tables,
         so don't delete the code that checks the password. Make sure you remember the password. \n\
+        Valid passwords : a string or a null value. \n\
         One SQLITE3 file for each Briefcase instance. \n\
         '''
         #
@@ -44,25 +45,29 @@ class Briefcase:
             exists_db = True
         else:
             exists_db = False
-
+        #
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
         self.pwd = password
+        #
 
-        if password != False:
+        # If password is a string or unicode, get the hash.
+        if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
-            pwd_hash = md4.hexdigest()
+            self.gpwd_hash = md4.hexdigest()
+        # If password is null in some way, hash must be also null.
         else:
-            pwd_hash = False
+            password = None
+            self.gpwd_hash = None
 
         if exists_db:
             # Test user password versus database password.
-            if pwd_hash != self.c.execute('select pwd from prv').fetchone()[0]:
+            if self.gpwd_hash != self.c.execute('select pwd from prv').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
             # Create prv table with passwords and original names of the files.
             self.c.execute('create table prv (pwd BLOB, file TEXT unique)')
-            self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd_hash, None])
+            self.c.execute('insert into prv (pwd, file) values (?,?)', [self.gpwd_hash, None])
             self.conn.commit()
         #
 
@@ -76,16 +81,19 @@ class Briefcase:
         Transforms any binary data into ready-to-write SQL information. \n\
         '''
         vCompressed = zlib.compress(bdata,9)
-        # If password is None or False, do not encrypt.
-        if pwd == False: return buffer(vCompressed)
-        # If password is null in some way, encrypt with default normalized.
-        elif not pwd:
-            if self.pwd == False:
+        # If password is null in some way, do not encrypt.
+        if not pwd:
+            return buffer(vCompressed)
+        # If password has default value.
+        elif pwd == 1:
+            # If default value is null, do not encrypt.
+            if not self.pwd:
                 return buffer(vCompressed)
             else:
                 pwd = self.pwd + self._normalize_16(len(self.pwd))
         # If password is provided, normalize it to 16 characters.
-        elif pwd: pwd += self._normalize_16(len(pwd))
+        else:
+            pwd += self._normalize_16(len(pwd))
         # Now crypt and return.
         crypt = AES.new(pwd)
         vCrypt = crypt.encrypt(vCompressed + self._normalize_16(len(vCompressed)))
@@ -96,16 +104,19 @@ class Briefcase:
         '''
         Restores binary data from SQL information. \n\
         '''
-        # If password is None or False, simply decompress.
-        if pwd == False: return zlib.decompress(bdata)
-        # If password is null in some way, decrypt with default normalized.
-        elif not pwd:
-            if self.pwd == False:
+        # If password is null in some way, do not encrypt.
+        if not pwd:
+            return zlib.decompress(bdata)
+        # If password has default value.
+        elif pwd == 1:
+            # If default value is null, do not encrypt.
+            if not self.pwd:
                 return zlib.decompress(bdata)
             else:
                 pwd = self.pwd + self._normalize_16(len(self.pwd))
         # If password is provided, normalize it to 16 characters.
-        elif pwd: pwd += self._normalize_16(len(pwd))
+        else:
+            pwd += self._normalize_16(len(pwd))
         # Now decrypt and return.
         crypt = AES.new(pwd)
         vCompressed = crypt.decrypt(bdata)
@@ -128,7 +139,7 @@ class Briefcase:
             print( msg )
 
 
-    def AddFile(self, filepath, password='', versionable=True):
+    def AddFile(self, filepath, password=1, versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
@@ -144,21 +155,22 @@ class Briefcase:
             self._log(2, 'Func AddFile: file path "%s" doesn\'t exist!' % filepath)
             return -1
 
-        # If password is false, pass.
-        if password == False:
-            pass
-        # If password is null in some way, it must become None.
-        elif not password:
-            password = None
-        # If password exists, create its hash.
-        else:
+        # If password is a string or unicode, get the hash.
+        if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
-            del md4
+        # If password has default value.
+        elif password == 1:
+            pwd_hash = self.gpwd_hash
+        # If password is null in some way, hash must be also null.
+        else:
+            password = None
+            pwd_hash = None
 
         md4 = MD4.new( os.path.split(fpath)[1] )
         filename = 't'+md4.hexdigest()
         del md4
+
         old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fpath).fetchone()
 
         # If file exists in DB and user provided a password.
@@ -169,7 +181,7 @@ class Briefcase:
                 self._log(2, 'Func AddFile: The password is INCORRECT! You will not be able to '\
                     'encrypt any data!')
                 return -1
-        # If file exists in DB ...
+        # If file exists in DB but no password was provided.
         elif old_pwd_hash:
             # ... and versionable is False, exit.
             if not versionable:
@@ -215,7 +227,7 @@ class Briefcase:
         return 0
 
 
-    def AddManyFiles(self, pathregex, password='', versionable=True):
+    def AddManyFiles(self, pathregex, password=1, versionable=True):
         '''
         Add more files, using a pattern. \n\
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
@@ -246,7 +258,7 @@ class Briefcase:
     def CopyIntoNew(self, fname, version, new_fname):
         '''
         Copy one version of one file, into a new file, that will have version 1. \n\
-        The password will be the same as the original file. \n\
+        The password will be the same as in the original file. \n\
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
@@ -277,9 +289,11 @@ class Briefcase:
             self._log(2, 'Func CopyIntoNew: there is no such file called "%s"!' % fname)
             return -1
 
+        # If version was specified, get that version.
         if version:
             data = self.c.execute('select raw, hash, size from %s where version=%i' % (filename, version)
                 ).fetchone()
+        # Else, get the latest version.
         else:
             data = self.c.execute('select raw, hash, size from %s order by version desc' % filename
                 ).fetchone()
@@ -291,8 +305,7 @@ class Briefcase:
 
         # Use original password of file. It can be False, None or some hash string.
         pwd = self.c.execute('select pwd from prv where file="%s"' % (fname.lower())).fetchone()
-        if pwd:
-            pwd = pwd[0]
+        if pwd: pwd = pwd[0]
 
         self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd, new_fname.lower()])
         self.conn.commit()
@@ -301,10 +314,10 @@ class Briefcase:
         return 0
 
 
-    def ExportFile(self, fname, password='', version=0, path='', execute=False):
+    def ExportFile(self, fname, password=1, version=0, path='', execute=False):
         '''
         Call one file from the briefcase. \n\
-        If version is not null, that specific version is used. Else, it's the most recent version. \n\
+        If version is not null, that specific version is used. Else, the most recent version is used. \n\
         If execute is false, the file is simply exported into the specified path. Else, the file
         is executed from a temporary folder, or from the specified path, then the file is deleted. \n\
         '''
@@ -345,17 +358,23 @@ class Briefcase:
             filename = f + '\\' + filename + os.path.splitext(fname)[1]
             del f
 
-        # Get file password hash. It can be False, None or some hash string.
+        # Get file password hash. It can be None, (Zero), or (some hash string).
         old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fname.lower()).fetchone()
-        if old_pwd_hash: old_pwd_hash = old_pwd_hash[0]
+        if old_pwd_hash:
+            old_pwd_hash = old_pwd_hash[0]
 
-        # If password exists, make hash.
-        if password:
+        # If password is a string or unicode, get the hash.
+        if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
-            del md4
+        # If password has default value.
+        elif password == 1:
+            password = self.pwd
+            pwd_hash = self.gpwd_hash
+        # If password is null in some way, hash must be also null.
         else:
-            pwd_hash = password
+            password = None
+            pwd_hash = None
 
         # If provided password != stored password...
         if old_pwd_hash != pwd_hash:
@@ -387,7 +406,7 @@ class Briefcase:
         return 0
 
 
-    def ExportAll(self, path, password=''):
+    def ExportAll(self, path, password=1):
         '''
         Export all files into one folder. \n\
         Only the most recent version of each file is exported. \n\
@@ -399,14 +418,18 @@ class Briefcase:
             self._log(2, 'Func ExportAll: path "%s" doesn\'t exist!' % path)
             return -1
 
-        # If password exists, make hash.
-        if password:
+        # If password is a string or unicode, get the hash.
+        if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
-            del md4
-        # If password is false, hash is false.
+        # If password has default value.
+        elif password == 1:
+            password = self.pwd
+            pwd_hash = self.gpwd_hash
+        # If password is null in some way, hash must be also null.
         else:
-            pwd_hash = password
+            password = None
+            pwd_hash = None
 
         all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
 
@@ -426,6 +449,7 @@ class Briefcase:
             latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
             w.write(self._restoreb(latest_version[0], password))
             w.close()
+            self._log(2, 'Func ExportAll: File "%s" exported successfully.' % temp_file[1])
 
         self._log(1, 'Exporting all files took %.4f sec.' % (clock()-ti))
         return 0
