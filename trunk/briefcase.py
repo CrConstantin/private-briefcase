@@ -8,11 +8,6 @@
     External dependencies : Python Crypto. \n\
 '''
 
-
-#metide
-
-
-
 # Standard libraries.
 import os, sys
 import shutil
@@ -71,8 +66,9 @@ class Briefcase:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
             # Create prv table with passwords and original names of the files.
-            self.c.execute('create table prv (pwd BLOB, file TEXT unique, labels TEXT)')
-            self.c.execute('insert into prv (pwd, file) values (?,?)', [self.gpwd_hash, None])
+            self.c.execute('create table labels (label TEXT unique, files TEXT)')
+            self.c.execute('create table prv (file TEXT unique, pwd BLOB, labels TEXT)')
+            self.c.execute('insert into prv (file, pwd) values (?,?)', [None, self.gpwd_hash])
             self.conn.commit()
         #
 
@@ -154,7 +150,7 @@ class Briefcase:
         ti = clock()
 
         if not labels:
-            self.c.execute('update prv set labels = ? where file = ?', ['', fname.lower()])
+            self.c.execute('update prv set labels=? where file=?', ['', fname.lower()])
             return 0
 
         if type(labels) == type('') or type(labels) == type(u''):
@@ -169,12 +165,23 @@ class Briefcase:
             return -1
 
         # If file doesn't exist in database, exit.
-        if not self.c.execute('select file from prv where file="%s"' % (fname.lower())).fetchone():
+        if not self.c.execute('select file from prv where file=?', [fname.lower()]).fetchone():
             self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
             return -1
 
+        for label in lLabels:
+            # Save old "list of files" from table. In fact it's a string.
+            files = self.c.execute('select files from labels where label=?', [label]).fetchone()
+            if files:
+                # Add the new file to the list of files.
+                self.c.execute('insert or replace into labels (label, files) values (?,?)',
+                    [label, files[0]+';'+fname])
+            else:
+                # Add the new file for the first time.
+                self.c.execute('insert into labels (label, files) values (?,?)', [label, fname])
+
         # Updata labels in PRV.
-        self.c.execute('update prv set labels = ? where file = ?', [sLabels, fname.lower()])
+        self.c.execute('update prv set labels=? where file=?', [sLabels, fname.lower()])
         self.conn.commit()
         self._log(1, 'Setting labels for file "%s" took %.4f sec.' % (fname, clock()-ti))
         return 0
@@ -349,7 +356,7 @@ class Briefcase:
             [data[0], data[1], data[2], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # Use original password and labels of file.
-        more = self.c.execute('select pwd, labels from prv where file="%s"' % (fname.lower())).fetchone()
+        more = self.c.execute('select pwd, labels from prv where file=?', [fname.lower()]).fetchone()
 
         self.c.execute('insert into prv (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
         self.conn.commit()
@@ -603,7 +610,7 @@ class Briefcase:
             return -1
 
 
-    def GetFileList(self):
+    def GetFileList(self, sort='', filter=''):
         '''
         Returns a list with all the files from current Briefcase file. \n\
         Cannot have errors. \n\
