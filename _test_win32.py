@@ -8,13 +8,13 @@ from briefcase import Briefcase
 b = Briefcase('Data.prv', '0123456789abcQW')
 
 print( '\nAdding a few files with default pass.' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg')
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg', 1, 'b')
 
 print( '\nAdding a few More files with False pass.' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', False)
 
 print( '\nAdding a More files with password.' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd')
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd', 'a')
 
 print( '\nPrinting file list.' )
 print( b.GetFileList() )
@@ -50,7 +50,7 @@ print( '\nExport one file.' )
 b.ExportFile('GPL v3.txt', path='d:', password='pass', execute=False)
 
 print( '\nExport another file.' )
-b.ExportFile('to_execute.jpg', path='d:', password='', execute=False)
+b.ExportFile('to_execute.jpg', path='d:', password=1, execute=False)
 
 print( '\nExport all.' )
 b.ExportAll('temp') # With default pass.

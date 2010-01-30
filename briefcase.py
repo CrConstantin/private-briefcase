@@ -8,6 +8,11 @@
     External dependencies : Python Crypto. \n\
 '''
 
+
+#metide
+
+
+
 # Standard libraries.
 import os, sys
 import shutil
@@ -66,7 +71,7 @@ class Briefcase:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
             # Create prv table with passwords and original names of the files.
-            self.c.execute('create table prv (pwd BLOB, file TEXT unique)')
+            self.c.execute('create table prv (pwd BLOB, file TEXT unique, labels TEXT)')
             self.c.execute('insert into prv (pwd, file) values (?,?)', [self.gpwd_hash, None])
             self.conn.commit()
         #
@@ -129,17 +134,53 @@ class Briefcase:
         '''
         if self.verbose <= 0:
             # Don't print anything.
-            return
+            return 0
         elif self.verbose == 1:
             # Only errors are printed.
             if level == 2:
                 print( msg )
+                return 1
         elif self.verbose == 2:
             # All messages are printed.
             print( msg )
+            return 2
 
 
-    def AddFile(self, filepath, password=1, versionable=True):
+    def SetLabels(self, fname, labels):
+        '''
+        Set labels/ tags/ keywords for one filename. Labels can be used to sort and filter files. \n\
+        Labels must be a ";"-separated string, a list, or a tuple. Any character excepting ";" can be used.\n\
+        '''
+        ti = clock()
+
+        if not labels:
+            self.c.execute('update prv set labels = ? where file = ?', ['', fname.lower()])
+            return 0
+
+        if type(labels) == type('') or type(labels) == type(u''):
+            lLabels = sorted([s.strip() for s in labels.split(';')])
+            sLabels = ';'.join(lLabels)
+        elif type(labels) == type([0,0]) or type(labels) == type((0,0)):
+            lLabels = sorted([s.strip() for s in labels])
+            sLabels = ';'.join(lLabels)
+        else:
+            self._log(2, 'Func SetLabels: invalid type for the label! It must be : string, unicode, '
+                'list, or tuple. You provided type "%s".' % type(label))
+            return -1
+
+        # If file doesn't exist in database, exit.
+        if not self.c.execute('select file from prv where file="%s"' % (fname.lower())).fetchone():
+            self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
+            return -1
+
+        # Updata labels in PRV.
+        self.c.execute('update prv set labels = ? where file = ?', [sLabels, fname.lower()])
+        self.conn.commit()
+        self._log(1, 'Setting labels for file "%s" took %.4f sec.' % (fname, clock()-ti))
+        return 0
+
+
+    def AddFile(self, filepath, password=1, labels='', versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
@@ -179,7 +220,7 @@ class Briefcase:
             # If password from user is differend from password in DB, exit.
             if old_pwd_hash != pwd_hash:
                 self._log(2, 'Func AddFile: The password is INCORRECT! You will not be able to '\
-                    'encrypt any data!')
+                    'decrypt/ encrypt any data!')
                 return -1
         # If file exists in DB but no password was provided.
         elif old_pwd_hash:
@@ -219,6 +260,10 @@ class Briefcase:
         # If password is provided by user, insert its hash in prv table.
         else:
             self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [pwd_hash, os.path.split(fpath)[1]])
+
+        # Set the labels...
+        self.SetLabels(os.path.split(fpath)[1], labels)
+
         # Everything is fine, save.
         self.conn.commit()
 
@@ -227,7 +272,7 @@ class Briefcase:
         return 0
 
 
-    def AddManyFiles(self, pathregex, password=1, versionable=True):
+    def AddManyFiles(self, pathregex, password=1, labels='', versionable=True):
         '''
         Add more files, using a pattern. \n\
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
@@ -249,7 +294,7 @@ class Briefcase:
             return -1
 
         for file in files:
-            self.AddFile(file, password, versionable)
+            self.AddFile(file, password, labels, versionable)
 
         self._log(1, 'Added %i files in %.4f sec.' % (len(files), clock()-ti))
         return 0
@@ -303,11 +348,10 @@ class Briefcase:
         self.c.execute(('insert into %s (raw, hash, size, date, user) values (?,?,?,?,?)' % new_filename),
             [data[0], data[1], data[2], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
-        # Use original password of file. It can be False, None or some hash string.
-        pwd = self.c.execute('select pwd from prv where file="%s"' % (fname.lower())).fetchone()
-        if pwd: pwd = pwd[0]
+        # Use original password and labels of file.
+        more = self.c.execute('select pwd, labels from prv where file="%s"' % (fname.lower())).fetchone()
 
-        self.c.execute('insert into prv (pwd, file) values (?,?)', [pwd, new_fname.lower()])
+        self.c.execute('insert into prv (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
         self.conn.commit()
 
         self._log(1, 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
@@ -378,8 +422,8 @@ class Briefcase:
 
         # If provided password != stored password...
         if old_pwd_hash != pwd_hash:
-            self._log(2, 'Func ExportFile: The password is INCORRECT! You will not be able to '\
-                'decrypt any data!')
+            self._log(2, 'Func ExportFile: Password for file "%s" is INCORRECT! You will not be '\
+                'able to decrypt any data!' % fname)
             # Delete any leftover temp files.
             if not path:
                 dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
@@ -544,6 +588,8 @@ class Briefcase:
                 filename).fetchone()[0]
             lastFileUser = self.c.execute('select user from %s order by version desc' %
                 filename).fetchone()[0]
+            labels = self.c.execute('select labels from prv where file="%s"' %
+                fname.lower()).fetchone()[0]
             versions = len( self.c.execute('select version from %s' % filename).fetchall() )
             #
             self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
@@ -551,7 +597,7 @@ class Briefcase:
                 'firstFileSize':firstFileSize, 'lastFileSize':lastFileSize,
                 'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
                 'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser,
-                'versions':versions}
+                'labels':labels, 'versions':versions}
         except:
             self._log(2, 'Func GetProperties: cannot find the file called "%s"!' % fname)
             return -1
