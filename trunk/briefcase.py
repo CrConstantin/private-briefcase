@@ -29,7 +29,7 @@ __all__ = ['Briefcase']
 class Briefcase:
     """ Main class """
 
-    def __init__(self, database='Data.prv', password=''):
+    def __init__(self, database='Data._files_', password=''):
         '''
         Create new Database, or connect to an old Database. \n\
         If you don't know the correct password, you cannot acces the crypted data from tables,
@@ -62,13 +62,13 @@ class Briefcase:
 
         if exists_db:
             # Test user password versus database password.
-            if self.gpwd_hash != self.c.execute('select pwd from prv').fetchone()[0]:
+            if self.gpwd_hash != self.c.execute('select pwd from _files_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
-            # Create prv table with passwords and original names of the files.
+            # Create _files_ table with passwords and original names of the files.
             self.c.execute('create table labels (label TEXT unique, files TEXT)')
-            self.c.execute('create table prv (file TEXT unique, pwd BLOB, labels TEXT)')
-            self.c.execute('insert into prv (file, pwd) values (?,?)', [None, self.gpwd_hash])
+            self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
+            self.c.execute('insert into _files_ (file, pwd) values (?,?)', [None, self.gpwd_hash])
             self.conn.commit()
         #
 
@@ -150,7 +150,7 @@ class Briefcase:
         ti = clock()
 
         if not labels:
-            self.c.execute('update prv set labels=? where file=?', ['', fname.lower()])
+            self.c.execute('update _files_ set labels=? where file=?', ['', fname.lower()])
             return 0
 
         if type(labels) == type('') or type(labels) == type(u''):
@@ -165,7 +165,7 @@ class Briefcase:
             return -1
 
         # If file doesn't exist in database, exit.
-        if not self.c.execute('select file from prv where file=?', [fname.lower()]).fetchone():
+        if not self.c.execute('select file from _files_ where file=?', [fname.lower()]).fetchone():
             self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
             return -1
 
@@ -180,8 +180,8 @@ class Briefcase:
                 # Add the new file for the first time.
                 self.c.execute('insert into labels (label, files) values (?,?)', [label, fname])
 
-        # Updata labels in PRV.
-        self.c.execute('update prv set labels=? where file=?', [sLabels, fname.lower()])
+        # Updata labels in _tables_.
+        self.c.execute('update _files_ set labels=? where file=?', [sLabels, fname.lower()])
         self.conn.commit()
         self._log(1, 'Setting labels for file "%s" took %.4f sec.' % (fname, clock()-ti))
         return 0
@@ -219,7 +219,7 @@ class Briefcase:
         filename = 't'+md4.hexdigest()
         del md4
 
-        old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fpath).fetchone()
+        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fpath).fetchone()
 
         # If file exists in DB and user provided a password.
         if old_pwd_hash and password:
@@ -263,10 +263,10 @@ class Briefcase:
 
         # If password is None, or password is False.
         if not password:
-            self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [password, os.path.split(fpath)[1]])
-        # If password is provided by user, insert its hash in prv table.
+            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [password, os.path.split(fpath)[1]])
+        # If password is provided by user, insert its hash in _files_ table.
         else:
-            self.c.execute('insert or ignore into prv (pwd, file) values (?,?)', [pwd_hash, os.path.split(fpath)[1]])
+            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [pwd_hash, os.path.split(fpath)[1]])
 
         # Set the labels...
         self.SetLabels(os.path.split(fpath)[1], labels)
@@ -330,7 +330,7 @@ class Briefcase:
         if version < 0 : version = 0
 
         # If new file name already exists, exit.
-        if self.c.execute('select file from prv where file="%s"' % (new_fname.lower())).fetchone():
+        if self.c.execute('select file from _files_ where file="%s"' % (new_fname.lower())).fetchone():
             self._log(2, 'Func CopyIntoNew: there is already a file called "%s"!' % new_fname)
             return -1
 
@@ -356,9 +356,9 @@ class Briefcase:
             [data[0], data[1], data[2], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # Use original password and labels of file.
-        more = self.c.execute('select pwd, labels from prv where file=?', [fname.lower()]).fetchone()
+        more = self.c.execute('select pwd, labels from _files_ where file=?', [fname.lower()]).fetchone()
 
-        self.c.execute('insert into prv (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
+        self.c.execute('insert into _files_ (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
         self.conn.commit()
 
         self._log(1, 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
@@ -410,7 +410,7 @@ class Briefcase:
             del f
 
         # Get file password hash. It can be None, (Zero), or (some hash string).
-        old_pwd_hash = self.c.execute('select pwd from prv where file="%s"' % fname.lower()).fetchone()
+        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fname.lower()).fetchone()
         if old_pwd_hash:
             old_pwd_hash = old_pwd_hash[0]
 
@@ -482,7 +482,7 @@ class Briefcase:
             password = None
             pwd_hash = None
 
-        all_files = self.c.execute('select pwd, file from prv order by file').fetchall()[1:]
+        all_files = self.c.execute('select pwd, file from _files_ order by file').fetchall()[1:]
 
         # Temp_file[0] = pwd, Temp_file[1] = fname.
         for temp_file in all_files:
@@ -525,13 +525,13 @@ class Briefcase:
         new_filename = 't'+md4.hexdigest()
         del md4
 
-        if self.c.execute('select * from prv where file="%s"' % (new_fname.lower())).fetchone():
+        if self.c.execute('select * from _files_ where file="%s"' % (new_fname.lower())).fetchone():
             self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
-            self.c.execute('update prv set file = ? where file = ?', [new_fname, fname])
+            self.c.execute('update _files_ set file = ? where file = ?', [new_fname, fname])
             self.conn.commit()
             self._log(1, 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
             return 0
@@ -560,7 +560,7 @@ class Briefcase:
         else:
             try:
                 self.c.execute('drop table %s' % filename)
-                self.c.execute('delete from prv where file="%s"' % fname.lower())
+                self.c.execute('delete from _files_ where file="%s"' % fname.lower())
                 self.conn.commit()
                 self._log(1, 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
                 return 0
@@ -595,7 +595,7 @@ class Briefcase:
                 filename).fetchone()[0]
             lastFileUser = self.c.execute('select user from %s order by version desc' %
                 filename).fetchone()[0]
-            labels = self.c.execute('select labels from prv where file="%s"' %
+            labels = self.c.execute('select labels from _files_ where file="%s"' %
                 fname.lower()).fetchone()[0]
             versions = len( self.c.execute('select version from %s' % filename).fetchall() )
             #
@@ -616,7 +616,7 @@ class Briefcase:
         Cannot have errors. \n\
         '''
         ti = clock()
-        li = self.c.execute('select file from prv where file notnull order by file asc').fetchall()
+        li = self.c.execute('select file from _files_ where file notnull order by file asc').fetchall()
         lf = []
         for elem in li:
             lf.append(elem[0])

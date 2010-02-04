@@ -242,7 +242,7 @@ class MainWindow(QtGui.QMainWindow):
         for qtBtn in sorted(self.tabs[tab_name+'_btns'], key=lambda k: k.lower()):
             self.tabs[tab_name+'_btns'][qtBtn].move(self.calculate_x(index), self.calculate_y(index))
             index += 1
-        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(10, self.calculate_y(index-1)+70))
+        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(750, self.calculate_y(index-1)+50))
         del index
         #
 
@@ -269,27 +269,20 @@ class MainWindow(QtGui.QMainWindow):
 
     def _new_tab(self, tab_name):
         #
-        # Tab widget.
-        newTab = QtGui.QWidget(self.tabWidget)
+        # New tab widget.
+        newTab = QtGui.QScrollArea()
         newTab.setObjectName(tab_name)
-        # Scroll area.
-        scrollArea = QtGui.QScrollArea(newTab)
-        scrollArea.setGeometry(QtCore.QRect(5, 5, 769, 472))
-        scrollArea.setWidgetResizable(True)
-        scrollArea.setObjectName(tab_name+'_s')
         # Contents widget.
-        scrollAreaContents = QtGui.QWidget(scrollArea)
-        scrollAreaContents.setGeometry(QtCore.QRect(0, 0, 768, 470))
-        scrollAreaContents.setMinimumSize(QtCore.QSize(10, 468))
+        scrollAreaContents = QtGui.QWidget(newTab)
+        scrollAreaContents.setMinimumSize(QtCore.QSize(750, 470))
         scrollAreaContents.setObjectName(tab_name+'_c')
-        scrollArea.setWidget(scrollAreaContents)
-        self.tabWidget.addTab(newTab, "")
+        newTab.setWidget(scrollAreaContents) # Activate scrollbar.
+        self.tabWidget.addTab(newTab, "") # Set tab to tabwidget.
         self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), tab_name)
         # Add tab to dictionary.
         self.tabs[tab_name] = newTab                  # Tab widget.
         self.tabs[tab_name+'_btns'] = {}              # Buttons from this tab.
         self.tabs[tab_name+'_bs'] = []                # Selected buttons.
-        self.tabs[tab_name+'_s'] = scrollArea         # Scroll area.
         self.tabs[tab_name+'_c'] = scrollAreaContents # Contents.
         #
 
