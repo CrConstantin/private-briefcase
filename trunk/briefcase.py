@@ -22,7 +22,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r37'
+__version__ = 'r38'
 __all__ = ['Briefcase']
 
 
@@ -62,13 +62,17 @@ class Briefcase:
 
         if exists_db:
             # Test user password versus database password.
-            if self.gpwd_hash != self.c.execute('select pwd from _files_').fetchone()[0]:
+            if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
-            # Create _files_ table with passwords and original names of the files.
-            self.c.execute('create table labels (label TEXT unique, files TEXT)')
+            # Create _files_ table with original names of the files and passwords.
             self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
-            self.c.execute('insert into _files_ (file, pwd) values (?,?)', [None, self.gpwd_hash])
+            # Create labels table used for statistics.
+            self.c.execute('create table labels (label TEXT unique, files TEXT)')
+            # Create _info_ table with database password, date created and user.
+            self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT)')
+            self.c.execute('insert into _info_ (pwd, date, user) values (?,?,?)',
+                [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
             self.conn.commit()
         #
 
@@ -616,12 +620,28 @@ class Briefcase:
         Cannot have errors. \n\
         '''
         ti = clock()
-        li = self.c.execute('select file from _files_ where file notnull order by file asc').fetchall()
+        li = self.c.execute('select file from _files_ order by file asc').fetchall()
         lf = []
         for elem in li:
             lf.append(elem[0])
         self._log(1, 'Get file list took %.4f sec.' % (clock()-ti))
         return lf
+
+
+    def GetInfo(self):
+        '''
+        Returns a dictionary containing the number of files, date created and user that 
+        created this Briefcase. \n\
+        Cannot have errors. \n\
+        '''
+        ti = clock()
+        li = self.c.execute('select file from _files_').fetchall()
+        numberOfFiles = len(li) ; del li
+        dateCreated = self.c.execute('select date from _info_').fetchone()[0]
+        userCreated = self.c.execute('select user from _info_').fetchone()[0]
+
+        self._log(1, 'Get database info took %.4f sec.' % (clock()-ti))
+        return {'numberOfFiles':numberOfFiles, 'dateCreated':dateCreated , 'userCreated':userCreated}
 
 
 #

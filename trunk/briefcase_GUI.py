@@ -16,7 +16,7 @@ import os, sys
 from briefcase import Briefcase
 from PyQt4 import QtCore, QtGui
 
-__version__ = 'r37'
+__version__ = 'r38'
 
 
 WStyle = '''
@@ -51,20 +51,22 @@ class MainWindow(QtGui.QMainWindow):
         self.sort = 'name'
         #
         self.resize(800, 600)
+        self.setMinimumSize(QtCore.QSize(800, 600))
+        self.setMaximumSize(QtCore.QSize(800, 600))
         QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
         QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
-        self.setObjectName("MainWindow")
-        self.setWindowTitle("Private Briefcase GUI")
+        self.setObjectName('MainWindow')
+        self.setWindowTitle('Private Briefcase GUI')
         #
         # Set central widget.
         self.centralwidget = QtGui.QWidget(self)
         self.centralwidget.setStyleSheet(WStyle)
-        self.centralwidget.setObjectName("centralwidget")
+        self.centralwidget.setObjectName('centralWidget')
         self.setCentralWidget(self.centralwidget)
         #
         # Set status bar.
         statusbar = QtGui.QStatusBar(self)
-        statusbar.setObjectName("statusbar")
+        statusbar.setObjectName('statusBar')
         self.setStatusBar(statusbar)
         #
         # Set tab widget.
@@ -73,7 +75,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tabWidget.setTabShape(QtGui.QTabWidget.Triangular)
         self.tabWidget.setTabsClosable(True)
         self.tabWidget.setMovable(True)
-        self.tabWidget.setObjectName("tabWidget")
+        self.tabWidget.setObjectName('tabWidget')
         self.tabWidget.setCurrentIndex(0)
         #
         # Setup actions.
@@ -130,7 +132,7 @@ class MainWindow(QtGui.QMainWindow):
         toolBar = QtGui.QToolBar(self)
         toolBar.setIconSize(QtCore.QSize(36, 36))
         toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        toolBar.setObjectName("toolBar")
+        toolBar.setObjectName('toolBar')
         self.addToolBar(QtCore.Qt.TopToolBarArea, toolBar)
         #
         # Add actions on toolbar.
@@ -311,7 +313,8 @@ class MainWindow(QtGui.QMainWindow):
     def on_new(self):
         #
         f = QtGui.QFileDialog()
-        input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(), 'All files (*.*)')
+        input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(),
+            'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
@@ -322,7 +325,8 @@ class MainWindow(QtGui.QMainWindow):
     def on_open(self):
         #
         f = QtGui.QFileDialog()
-        input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(), 'All files (*.*)')
+        input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(),
+            'All files (*.*)')
         if not input : return
         tab_name = os.path.split(str(input).title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
@@ -342,12 +346,13 @@ class MainWindow(QtGui.QMainWindow):
         #
         try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         except :
-            QtGui.QMessageBox.critical(self.centralwidget, "Error on Add",
-                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Add',
+                '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
         #
         f = QtGui.QFileDialog()
-        input = f.getOpenFileNames(self.centralwidget, 'Add files in briefcase', os.getcwd(), 'All files (*.*)')
+        input = f.getOpenFileNames(self.centralwidget, 'Add files in briefcase', os.getcwd(),
+            'All files (*.*)')
         if not input : return
         #
         for elem in input:
@@ -366,8 +371,8 @@ class MainWindow(QtGui.QMainWindow):
         #
         try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         except :
-            QtGui.QMessageBox.critical(self.centralwidget, "Error on Refresh",
-                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Refresh',
+                '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
         print( 'Triggered REFRESH !' )
         self.sort_btns()
@@ -376,21 +381,24 @@ class MainWindow(QtGui.QMainWindow):
     def on_db_properties(self):
         try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         except :
-            QtGui.QMessageBox.critical(self.centralwidget, "Error on Properties",
-                "<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>")
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Properties',
+                '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
-        info = '<br>'.join(self.tabs[tab_name+'_pb'].GetFileList())
-        QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % tab_name, info)
-        del info, tab_name
+        prop = self.tabs[tab_name+'_pb'].GetInfo()
+        QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % tab_name, '''
+            <br><b>numberOfFiles</b> : %(numberOfFiles)i
+            <br><b>dateCreated</b> : %(dateCreated)s
+            <br><b>userCreated</b> : %(userCreated)s<br>''' % prop)
+        del tab_name
 
     def on_help(self):
-        QtGui.QMessageBox.information(self.centralwidget, "Private Briefcase Help",
-            "<br>Please check <b>Online Help</b> : http://code.google.com/p/private-briefcase/w/<br>")
+        QtGui.QMessageBox.information(self.centralwidget, 'Private Briefcase Help',
+            '<br>Please check <b>Online Help</b> : http://code.google.com/p/private-briefcase/w/<br>')
 
     def on_about(self):
-        QtGui.QMessageBox.about(self.centralwidget, "About Private Briefcase",
-            "<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>"
-            "<b>Website</b> : http://private-briefcase.googlecode.com<br>")
+        QtGui.QMessageBox.about(self.centralwidget, 'About Private Briefcase',
+            '<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>'
+            '<b>Website</b> : http://private-briefcase.googlecode.com<br>')
 
     def on_view(self):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
@@ -439,7 +447,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtTxt, qtMsg = QtGui.QInputDialog.getText(self.centralwidget, 'Rename file ? ...',
-            "New name :", QtGui.QLineEdit.Normal, qtBS)
+            'New name :', QtGui.QLineEdit.Normal, qtBS)
         if qtMsg and str(qtTxt): # Clicked yes and text exists.
             ret = self.tabs[tab_name+'_pb'].RenFile(fname=qtBS, new_fname=str(qtTxt))
             if ret==0: # If Briefcase returns 0, rename the button.
@@ -457,7 +465,7 @@ class MainWindow(QtGui.QMainWindow):
         prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
         if not prop['labels']:
             prop['labels'] = '-'
-        QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % qtBS, '''
+        QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
             <br><b>fileName</b> : %(fileName)s
             <br><b>internFileName</b> : %(internFileName)s
             <br><b>firstFileSize</b> : %(firstFileSize)i
@@ -467,7 +475,7 @@ class MainWindow(QtGui.QMainWindow):
             <br><b>firstFileUser</b> : %(firstFileUser)s
             <br><b>lastFileUser</b> : %(lastFileUser)s
             <br><b>labels</b> : %(labels)s
-            <br><b>versions</b> : %(versions)i''' % prop)
+            <br><b>versions</b> : %(versions)i<br>''' % prop)
         del tab_name, qtBS, prop
 
 
