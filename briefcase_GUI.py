@@ -16,7 +16,7 @@ import os, sys
 from briefcase import Briefcase
 from PyQt4 import QtCore, QtGui
 
-__version__ = '1.0'
+__version__ = 'r37'
 
 
 WStyle = '''
@@ -46,7 +46,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__(parent)
         #
         global WStyle
-        # B name, B name _b, B name _bs, B name _c, B name _s
+        # B name, B name _btns, B name _bs, B name _c
         self.tabs = {}
         self.sort = 'name'
         #
@@ -239,10 +239,11 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         #
         index = 0
-        for qtBtn in sorted(self.tabs[tab_name+'_btns'], key=lambda k: k.lower()):
+        for qtBtn in sorted( self.tabs[tab_name+'_btns'], key=lambda k: k.lower() ):
             self.tabs[tab_name+'_btns'][qtBtn].move(self.calculate_x(index), self.calculate_y(index))
             index += 1
-        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(750, self.calculate_y(index-1)+50))
+        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(755, self.calculate_y(index-1)+70))
+        self.tabs[tab_name+'_c'].setMaximumSize(QtCore.QSize(755, self.calculate_y(index-1)+70))
         del index
         #
 
@@ -274,10 +275,11 @@ class MainWindow(QtGui.QMainWindow):
         newTab.setObjectName(tab_name)
         # Contents widget.
         scrollAreaContents = QtGui.QWidget(newTab)
-        scrollAreaContents.setMinimumSize(QtCore.QSize(750, 470))
         scrollAreaContents.setObjectName(tab_name+'_c')
-        newTab.setWidget(scrollAreaContents) # Activate scrollbar.
-        self.tabWidget.addTab(newTab, "") # Set tab to tabwidget.
+        # Add contents to scrollarea.
+        newTab.setWidget(scrollAreaContents)
+        # Add tab to tabwidget.
+        self.tabWidget.addTab(newTab, "")
         self.tabWidget.setTabText(self.tabWidget.indexOf(newTab), tab_name)
         # Add tab to dictionary.
         self.tabs[tab_name] = newTab                  # Tab widget.
@@ -288,8 +290,6 @@ class MainWindow(QtGui.QMainWindow):
 
     def _new_button(self, tab_name, file_name):
         #
-        # Recalculate minimum size for container.
-        self.tabs[tab_name+'_c'].setMinimumSize(QtCore.QSize(10, self.calculate_y()+70))
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -331,6 +331,8 @@ class MainWindow(QtGui.QMainWindow):
         #
         for file_name in self.tabs[tab_name+'_pb'].GetFileList():
             self._new_button(tab_name, file_name)
+        #
+        self.sort_btns()
         #
 
     def on_join(self):
@@ -453,6 +455,8 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
+        if not prop['labels']:
+            prop['labels'] = '-'
         QtGui.QMessageBox.information(self.centralwidget, "Properties for %s" % qtBS, '''
             <br><b>fileName</b> : %(fileName)s
             <br><b>internFileName</b> : %(internFileName)s
@@ -462,6 +466,7 @@ class MainWindow(QtGui.QMainWindow):
             <br><b>lastFileDate</b> : %(lastFileDate)s
             <br><b>firstFileUser</b> : %(firstFileUser)s
             <br><b>lastFileUser</b> : %(lastFileUser)s
+            <br><b>labels</b> : %(labels)s
             <br><b>versions</b> : %(versions)i''' % prop)
         del tab_name, qtBS, prop
 
