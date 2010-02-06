@@ -76,7 +76,7 @@ class CustomDialog(QtGui.QDialog):
         layout.addWidget(self.dir, 1, 1, 1, 5)
         layout.addWidget(self.browse, 1, 6, 1, 1)
         layout.addWidget(self.pwd, 2, 1, 1, 6)
-        layout.addWidget(self.btn, 3, 1, 1, 6)
+        layout.addWidget(self.btn, 4, 1, 1, 6)
         self.setLayout(layout)
         #
 
@@ -87,14 +87,20 @@ class CustomDialog(QtGui.QDialog):
         f = QtGui.QFileDialog()
         if self.action == 'Create !':
             input = f.getSaveFileName(self, self.title, os.getcwd(), 'All files (*.*)')
+            self.dir.setText(str(input))
         elif self.action == 'Open !':
             input = f.getOpenFileName(self, self.title, os.getcwd(), 'All files (*.*)')
-        if not input : return
-        self.dir.setText(input)
+            self.dir.setText(str(input))
+        elif self.action == 'Add !':
+            input = f.getOpenFileNames(self, self.title, os.getcwd(), 'All files (*.*)')
+            text = ''
+            for elem in input:
+                text += str(elem) + ';'
+            self.dir.setText(text[:-1])
 
     def Exit(self):
         self.transmit['pwd'] = str(self.pwd.text())
-        self.done(0)
+        self.done(1)
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -110,7 +116,7 @@ class MainWindow(QtGui.QMainWindow):
         self.resize(800, 600)
         self.setMinimumSize(QtCore.QSize(800, 600))
         self.setMaximumSize(QtCore.QSize(800, 600))
-        QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
+        QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('CleanLooks'))
         QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
         self.setObjectName('MainWindow')
         self.setWindowTitle('Private Briefcase GUI')
@@ -373,10 +379,10 @@ class MainWindow(QtGui.QMainWindow):
             'directory where you want to create the new Briefcase file. You can set a default '\
             'password, but password is optional.', 'Create !')
         dlg.exec_()
-        dir = dlg.transmit['dir']
-        pwd = dlg.transmit['pwd']
+        dir, pwd = dlg.transmit['dir'], dlg.transmit['pwd']
+        if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
-        if not dir: return
+        #
         tab_name = os.path.split(dir.title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
         self._new_tab(tab_name)
@@ -389,10 +395,10 @@ class MainWindow(QtGui.QMainWindow):
             'directory where the Briefcase file is located. You must provite the correct '
             'password to be able to decrypt the files.', 'Open !')
         dlg.exec_()
-        dir = dlg.transmit['dir']
-        pwd = dlg.transmit['pwd']
+        dir, pwd = dlg.transmit['dir'], dlg.transmit['pwd']
+        if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
-        if not dir: return
+        #
         tab_name = os.path.split(dir.title())[1]
         self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
         self._new_tab(tab_name)
@@ -405,7 +411,9 @@ class MainWindow(QtGui.QMainWindow):
         #
 
     def on_join(self):
+        #
         print( 'Triggered JOIN !' )
+        #
 
     def on_add(self):
         #
@@ -415,19 +423,30 @@ class MainWindow(QtGui.QMainWindow):
                 '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
         #
-        f = QtGui.QFileDialog()
-        input = f.getOpenFileNames(self.centralwidget, 'Add files in briefcase', os.getcwd(),
-            'All files (*.*)')
-        if not input : return
+        dlg = CustomDialog(self.centralwidget, 'Add files to briefcase', 'Select the files to be '
+            'added. You can specify a password and one or more labels, separated by ";".', 'Add !')
+        dlg.lbl = QtGui.QLineEdit(dlg)
+        dlg.lbl.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        dlg.lbl.setMinimumSize(QtCore.QSize(1, 22))
+        dlg.layout().addWidget(dlg.lbl, 3, 1, 1, 6)
+        dlg.resize(300, 130)
+        dlg.setMinimumSize(QtCore.QSize(300, 130))
+        dlg.setMaximumSize(QtCore.QSize(300, 130))
+        dlg.exec_()
+        # Selected files are separated by ";" so must be exploded.
+        dir = dlg.transmit['dir'].split(';')
+        # If not password was selected, default password must be used, so pwd -> 1.
+        pwd = dlg.transmit['pwd']
+        if not pwd: pwd = 1
+        # Save labels, transformed into python string.
+        lbl = str(dlg.lbl.text())
+        if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
+        del dlg
         #
-        for elem in input:
-            #
-            self.tabs[tab_name+'_pb'].AddFile(str(elem))
-            #
-            tab_name = str(self.tabWidget.currentWidget().objectName())
-            file_name = os.path.split(str(elem))[1]
+        for elem in dir:
+            self.tabs[tab_name+'_pb'].AddFile(elem, pwd, lbl)
+            file_name = os.path.split(elem)[1]
             self._new_button(tab_name, file_name)
-            #
         #
         self.sort_btns()
         #
@@ -439,11 +458,11 @@ class MainWindow(QtGui.QMainWindow):
             QtGui.QMessageBox.critical(self.centralwidget, 'Error on Refresh',
                 '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
-        print( 'Triggered REFRESH !' )
         self.sort_btns()
         #
 
     def on_db_properties(self):
+        #
         try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         except :
             QtGui.QMessageBox.critical(self.centralwidget, 'Error on Properties',
@@ -460,17 +479,23 @@ class MainWindow(QtGui.QMainWindow):
             <br><b>versionCreated</b> : %(versionCreated)s
             <br>''' % prop)
         del tab_name
+        #
 
     def on_help(self):
+        #
         QtGui.QMessageBox.information(self.centralwidget, 'Private Briefcase Help',
             '<br>Please check <b>Online Help</b> : http://code.google.com/p/private-briefcase/w/<br>')
+        #
 
     def on_about(self):
+        #
         QtGui.QMessageBox.about(self.centralwidget, 'About Private Briefcase',
             '<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>'
             '<b>Website</b> : http://private-briefcase.googlecode.com<br>')
+        #
 
     def on_view(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         # If caller is an action.
         if type(self.sender()) == type(QtGui.QPushButton()):
@@ -481,14 +506,18 @@ class MainWindow(QtGui.QMainWindow):
             self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
             del qtBS
         del tab_name
+        #
 
     def on_edit(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         self.tabs[tab_name+'_pb'].ExportFile(qtBS, execute=True)
         del tab_name, qtBS
+        #
 
     def on_copy(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
@@ -499,8 +528,10 @@ class MainWindow(QtGui.QMainWindow):
                 self._new_button(tab_name, 'copy of '+qtBS)
                 self.sort_btns()
         del tab_name, qtBS, qtMsg
+        #
 
     def on_delete(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtMsg = QtGui.QMessageBox.warning(self.centralwidget, 'Delete file ? ...',
@@ -512,8 +543,10 @@ class MainWindow(QtGui.QMainWindow):
                 del self.tabs[tab_name+'_btns'][qtBS]
                 self.sort_btns()
         del tab_name, qtBS, qtMsg
+        #
 
     def on_rename(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         qtTxt, qtMsg = QtGui.QInputDialog.getText(self.centralwidget, 'Rename file ? ...',
@@ -528,8 +561,10 @@ class MainWindow(QtGui.QMainWindow):
                 del self.tabs[tab_name+'_btns'][qtBS]
                 self.sort_btns()
         del tab_name, qtBS, qtTxt, qtMsg
+        #
 
     def on_properties(self):
+        #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
         prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
@@ -547,6 +582,7 @@ class MainWindow(QtGui.QMainWindow):
             <br><b>labels</b> : %(labels)s
             <br><b>versions</b> : %(versions)i<br>''' % prop)
         del tab_name, qtBS, prop
+        #
 
 
 import res_rc

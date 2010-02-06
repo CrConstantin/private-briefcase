@@ -22,7 +22,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r40'
+__version__ = 'r41'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -164,7 +164,7 @@ class Briefcase:
             sLabels = ';'.join(lLabels)
         else:
             self._log(2, 'Func SetLabels: invalid type for the label! It must be : string, unicode, '
-                'list, or tuple. You provided type "%s".' % type(label))
+                'list, or tuple. You provided type "%s".' % type(labels))
             return -1
 
         # If file doesn't exist in database, exit.
