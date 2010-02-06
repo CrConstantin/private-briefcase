@@ -10,13 +10,11 @@
 '''
 
 # Standard libraries.
-import os, sys
+import os, sys, PyQt4
 
 # External dependency.
-from briefcase import Briefcase
+from briefcase import *
 from PyQt4 import QtCore, QtGui
-
-__version__ = 'r39'
 
 
 WStyle = '''
@@ -39,6 +37,65 @@ QPushButton:pressed {
     border-style: inset;
 }
 '''
+
+
+class CustomDialog(QtGui.QDialog):
+    def __init__(self, parent, title, whatsthis, action):
+        #
+        super(CustomDialog, self).__init__(parent)
+        self.transmit = {'dir':'', 'pwd':''}
+        self.title = title
+        self.action = action
+        #
+        self.resize(300, 100)
+        self.setMinimumSize(QtCore.QSize(300, 100))
+        self.setMaximumSize(QtCore.QSize(300, 100))
+        self.setWindowTitle(title)
+        self.setWhatsThis(whatsthis)
+        #
+        self.browse = QtGui.QPushButton(self)
+        self.browse.setMinimumSize(QtCore.QSize(1, 20))
+        self.browse.setText('...')
+        self.dir = QtGui.QLineEdit(self)
+        self.dir.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        self.dir.setMinimumSize(QtCore.QSize(1, 22))
+        self.pwd = QtGui.QLineEdit(self)
+        self.pwd.setEchoMode(QtGui.QLineEdit.Password)
+        self.pwd.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        self.pwd.setMinimumSize(QtCore.QSize(1, 22))
+        self.btn = QtGui.QPushButton(self)
+        self.btn.setMinimumSize(QtCore.QSize(1, 20))
+        self.btn.setText(action)
+        self.btn.setDefault(True)
+        #
+        self.dir.textChanged.connect(self.Update)
+        self.browse.clicked.connect(self.Browse)
+        self.btn.clicked.connect(self.Exit)
+        #
+        layout = QtGui.QGridLayout(self)
+        layout.addWidget(self.dir, 1, 1, 1, 5)
+        layout.addWidget(self.browse, 1, 6, 1, 1)
+        layout.addWidget(self.pwd, 2, 1, 1, 6)
+        layout.addWidget(self.btn, 3, 1, 1, 6)
+        self.setLayout(layout)
+        #
+
+    def Update(self, text):
+        self.transmit['dir'] = str(text)
+
+    def Browse(self):
+        f = QtGui.QFileDialog()
+        if self.action == 'Create !':
+            input = f.getSaveFileName(self, self.title, os.getcwd(), 'All files (*.*)')
+        elif self.action == 'Open !':
+            input = f.getOpenFileName(self, self.title, os.getcwd(), 'All files (*.*)')
+        if not input : return
+        self.dir.setText(input)
+
+    def Exit(self):
+        self.transmit['pwd'] = str(self.pwd.text())
+        self.done(0)
+
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -312,24 +369,32 @@ class MainWindow(QtGui.QMainWindow):
     # Triggered functions.
     def on_new(self):
         #
-        f = QtGui.QFileDialog()
-        input = f.getSaveFileName(self.centralwidget, 'Create new briefcase file', os.getcwd(),
-            'All files (*.*)')
-        if not input : return
-        tab_name = os.path.split(str(input).title())[1]
-        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
+        dlg = CustomDialog(self.centralwidget, 'Create new briefcase file', 'Browse to the '\
+            'directory where you want to create the new Briefcase file. You can set a default '\
+            'password, but password is optional.', 'Create !')
+        dlg.exec_()
+        dir = dlg.transmit['dir']
+        pwd = dlg.transmit['pwd']
+        del dlg
+        if not dir: return
+        tab_name = os.path.split(dir.title())[1]
+        self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
         self._new_tab(tab_name)
         self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
         #
 
     def on_open(self):
         #
-        f = QtGui.QFileDialog()
-        input = f.getOpenFileName(self.centralwidget, 'Load existing briefcase file', os.getcwd(),
-            'All files (*.*)')
-        if not input : return
-        tab_name = os.path.split(str(input).title())[1]
-        self.tabs[tab_name+'_pb'] = Briefcase(input, '0123456789abcQW') # Briefcase for current tab.
+        dlg = CustomDialog(self.centralwidget, 'Open briefcase file', 'Browse to the '\
+            'directory where the Briefcase file is located. You must provite the correct '
+            'password to be able to decrypt the files.', 'Open !')
+        dlg.exec_()
+        dir = dlg.transmit['dir']
+        pwd = dlg.transmit['pwd']
+        del dlg
+        if not dir: return
+        tab_name = os.path.split(dir.title())[1]
+        self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
         self._new_tab(tab_name)
         self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
         #
