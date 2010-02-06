@@ -22,14 +22,14 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r38'
+__version__ = 'r39'
 __all__ = ['Briefcase']
 
 
 class Briefcase:
     """ Main class """
 
-    def __init__(self, database='Data._files_', password=''):
+    def __init__(self, database='Data.prv', password=''):
         '''
         Create new Database, or connect to an old Database. \n\
         If you don't know the correct password, you cannot acces the crypted data from tables,
@@ -67,8 +67,6 @@ class Briefcase:
         else:
             # Create _files_ table with original names of the files and passwords.
             self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
-            # Create labels table used for statistics.
-            self.c.execute('create table labels (label TEXT unique, files TEXT)')
             # Create _info_ table with database password, date created and user.
             self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT)')
             self.c.execute('insert into _info_ (pwd, date, user) values (?,?,?)',
@@ -172,17 +170,6 @@ class Briefcase:
         if not self.c.execute('select file from _files_ where file=?', [fname.lower()]).fetchone():
             self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
             return -1
-
-        for label in lLabels:
-            # Save old "list of files" from table. In fact it's a string.
-            files = self.c.execute('select files from labels where label=?', [label]).fetchone()
-            if files:
-                # Add the new file to the list of files.
-                self.c.execute('insert or replace into labels (label, files) values (?,?)',
-                    [label, files[0]+';'+fname])
-            else:
-                # Add the new file for the first time.
-                self.c.execute('insert into labels (label, files) values (?,?)', [label, fname])
 
         # Updata labels in _tables_.
         self.c.execute('update _files_ set labels=? where file=?', [sLabels, fname.lower()])
@@ -628,20 +615,46 @@ class Briefcase:
         return lf
 
 
-    def GetInfo(self):
+    def GetLabelsList(self):
         '''
-        Returns a dictionary containing the number of files, date created and user that 
-        created this Briefcase. \n\
+        Returns a list with all the labels from current Briefcase file. \n\
         Cannot have errors. \n\
         '''
         ti = clock()
+        li = self.c.execute('select distinct labels from _files_').fetchall()
+        lf = []
+        for elem in li:
+            lf.append(elem[0])
+        li = ';'.join(lf)
+        lf = li.split(';')
+        li = list(set(lf))
+        if str(li[0]) == '':
+            del li[0]
+        self._log(1, 'Get labels list took %.4f sec.' % (clock()-ti))
+        return sorted(li)
+
+
+    def Info(self):
+        '''
+        Returns a dictionary containing the following information for this Briefcase file : \n\
+        - number of files \n\
+        - date created \n\
+        - user that created it \n\
+        - all labels used \n\
+        - version of program used to create the file. \n\
+        Cannot have errors. \n\
+        '''
+        ti = clock()
+        global __version__
         li = self.c.execute('select file from _files_').fetchall()
         numberOfFiles = len(li) ; del li
         dateCreated = self.c.execute('select date from _info_').fetchone()[0]
         userCreated = self.c.execute('select user from _info_').fetchone()[0]
+        allLabels = ', '.join(self.GetLabelsList())
 
         self._log(1, 'Get database info took %.4f sec.' % (clock()-ti))
-        return {'numberOfFiles':numberOfFiles, 'dateCreated':dateCreated , 'userCreated':userCreated}
+        return {'numberOfFiles':numberOfFiles, 'dateCreated':dateCreated , 'userCreated':userCreated,
+            'allLabels':allLabels, 'versionCreated':__version__}
 
 
 #

@@ -16,7 +16,7 @@ import os, sys
 from briefcase import Briefcase
 from PyQt4 import QtCore, QtGui
 
-__version__ = 'r38'
+__version__ = 'r39'
 
 
 WStyle = '''
@@ -384,11 +384,16 @@ class MainWindow(QtGui.QMainWindow):
             QtGui.QMessageBox.critical(self.centralwidget, 'Error on Properties',
                 '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
             return
-        prop = self.tabs[tab_name+'_pb'].GetInfo()
+        prop = self.tabs[tab_name+'_pb'].Info()
+        if not prop['allLabels']:
+            prop['allLabels'] = '-'
         QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % tab_name, '''
             <br><b>numberOfFiles</b> : %(numberOfFiles)i
             <br><b>dateCreated</b> : %(dateCreated)s
-            <br><b>userCreated</b> : %(userCreated)s<br>''' % prop)
+            <br><b>userCreated</b> : %(userCreated)s
+            <br><b>allLabels</b> : %(allLabels)s
+            <br><b>versionCreated</b> : %(versionCreated)s
+            <br>''' % prop)
         del tab_name
 
     def on_help(self):
