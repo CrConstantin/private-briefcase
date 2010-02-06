@@ -22,8 +22,8 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r39'
-__all__ = ['Briefcase']
+__version__ = 'r40'
+__all__ = ['Briefcase', '__version__']
 
 
 class Briefcase:
@@ -38,6 +38,7 @@ class Briefcase:
         One SQLITE3 file for each Briefcase instance. \n\
         '''
         #
+        global __version__
         self.database = str(database)
         self.verbose = 2
         #
@@ -68,9 +69,9 @@ class Briefcase:
             # Create _files_ table with original names of the files and passwords.
             self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
             # Create _info_ table with database password, date created and user.
-            self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT)')
-            self.c.execute('insert into _info_ (pwd, date, user) values (?,?,?)',
-                [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+            self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)')
+            self.c.execute('insert into _info_ (pwd, date, user, version) values (?,?,?,?)',
+                [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME'), __version__])
             self.conn.commit()
         #
 
@@ -645,16 +646,16 @@ class Briefcase:
         Cannot have errors. \n\
         '''
         ti = clock()
-        global __version__
         li = self.c.execute('select file from _files_').fetchall()
         numberOfFiles = len(li) ; del li
         dateCreated = self.c.execute('select date from _info_').fetchone()[0]
         userCreated = self.c.execute('select user from _info_').fetchone()[0]
         allLabels = ', '.join(self.GetLabelsList())
+        versionCreated = self.c.execute('select version from _info_').fetchone()[0]
 
         self._log(1, 'Get database info took %.4f sec.' % (clock()-ti))
         return {'numberOfFiles':numberOfFiles, 'dateCreated':dateCreated , 'userCreated':userCreated,
-            'allLabels':allLabels, 'versionCreated':__version__}
+            'allLabels':allLabels, 'versionCreated':versionCreated}
 
 
 #
