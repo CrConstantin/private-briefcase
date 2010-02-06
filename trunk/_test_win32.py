@@ -8,16 +8,19 @@ from briefcase import Briefcase
 b = Briefcase('Data.prv', '0123456789abcQW')
 
 print( '\nAdding a few files with default pass.' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg', 1, 'b')
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg', 1, 'more labels;even more labels')
 
 print( '\nAdding a few More files with False pass.' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', False)
 
 print( '\nAdding a More files with password.' )
-b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd', 'a')
+b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd', 'a;b;c;d;label')
 
 print( '\nPrinting file list.' )
 print( b.GetFileList() )
+
+print( '\nPrinting labels list.' )
+print( b.GetLabelsList() )
 
 print( '\nAdd single file.' )
 b.AddFile('GPL v3.txt', 'pass')
