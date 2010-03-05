@@ -30,7 +30,7 @@ QPushButton {
     border-style: outset;
     border: 1px solid #666;
     border-radius: 3px;
-    color: #000;
+    color: #001;
     font: 10px;
 }
 QPushButton:pressed {
@@ -53,6 +53,7 @@ class CustomDialog(QtGui.QDialog):
         self.setWindowTitle(title)
         self.setWhatsThis(whatsthis)
         #
+        # Buttons.
         self.browse = QtGui.QPushButton(self)
         self.browse.setMinimumSize(QtCore.QSize(1, 20))
         self.browse.setText('...')
@@ -68,15 +69,23 @@ class CustomDialog(QtGui.QDialog):
         self.btn.setText(action)
         self.btn.setDefault(True)
         #
+        # Labels.
+        self.browseL = QtGui.QLabel(self)
+        self.browseL.setText('File')
+        self.pwdL = QtGui.QLabel(self)
+        self.pwdL.setText('Password')
+        #
         self.dir.textChanged.connect(self.Update)
         self.browse.clicked.connect(self.Browse)
         self.btn.clicked.connect(self.Exit)
         #
         layout = QtGui.QGridLayout(self)
-        layout.addWidget(self.dir, 1, 1, 1, 5)
-        layout.addWidget(self.browse, 1, 6, 1, 1)
-        layout.addWidget(self.pwd, 2, 1, 1, 6)
-        layout.addWidget(self.btn, 4, 1, 1, 6)
+        layout.addWidget(self.browseL, 1, 1, 1, 1)
+        layout.addWidget(self.dir, 1, 2, 1, 5)
+        layout.addWidget(self.browse, 1, 7, 1, 1)
+        layout.addWidget(self.pwdL, 2, 1, 1, 1)
+        layout.addWidget(self.pwd, 2, 2, 1, 6)
+        layout.addWidget(self.btn, 4, 1, 1, 7)
         self.setLayout(layout)
         #
 
@@ -113,6 +122,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tabs = {}
         self.sort = 'name'
         #
+        # Some settings.
         self.resize(800, 600)
         self.setMinimumSize(QtCore.QSize(800, 600))
         self.setMaximumSize(QtCore.QSize(800, 600))
@@ -140,6 +150,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tabWidget.setMovable(True)
         self.tabWidget.setObjectName('tabWidget')
         self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.tabCloseRequested.connect(self._close_tab)
         #
         # Setup actions.
         self.actionNew = QtGui.QAction(self)
@@ -353,6 +364,19 @@ class MainWindow(QtGui.QMainWindow):
         self.tabs[tab_name+'_c'] = scrollAreaContents # Contents.
         #
 
+    def _close_tab(self, index):
+        #
+        tab_name = str(self.tabWidget.tabText(index))
+        self.tabWidget.removeTab(index)
+        #
+        del self.tabs[tab_name+'_bs']
+        for btn in self.tabs[tab_name+'_btns']:
+            del btn
+        del self.tabs[tab_name+'_btns']
+        del self.tabs[tab_name+'_c']
+        del self.tabs[tab_name]
+        #
+
     def _new_button(self, tab_name, file_name):
         #
         # Setup button.
@@ -362,7 +386,12 @@ class MainWindow(QtGui.QMainWindow):
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
         pushButton.setStatusTip(file_name)
-        pushButton.setText(file_name)
+        if len(file_name)>15:
+            fname = file_name[:15]+' (...)'
+        else:
+            fname = file_name
+        pushButton.setText(fname)
+        pushButton.setStyleSheet('text-align : left bottom;')
         # Connect events.
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
@@ -400,6 +429,12 @@ class MainWindow(QtGui.QMainWindow):
         del dlg
         #
         tab_name = os.path.split(dir.title())[1]
+        # Check for existance.
+        if self.tabs.has_key(tab_name):
+            QtGui.QMessageBox.warning(self.centralwidget, 'Will not Open',
+                '<br>Warning! "%s" is already open!<br>' % tab_name)
+            return
+        #
         self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
         self._new_tab(tab_name)
         self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
@@ -425,10 +460,14 @@ class MainWindow(QtGui.QMainWindow):
         #
         dlg = CustomDialog(self.centralwidget, 'Add files to briefcase', 'Select the files to be '
             'added. You can specify a password and one or more labels, separated by ";".', 'Add !')
+        dlg.browseL.setText('Files')
+        dlg.lblL = QtGui.QLabel()
+        dlg.lblL.setText('Labels')
         dlg.lbl = QtGui.QLineEdit(dlg)
         dlg.lbl.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         dlg.lbl.setMinimumSize(QtCore.QSize(1, 22))
-        dlg.layout().addWidget(dlg.lbl, 3, 1, 1, 6)
+        dlg.layout().addWidget(dlg.lblL, 3, 1, 1, 1)
+        dlg.layout().addWidget(dlg.lbl, 3, 2, 1, 6)
         dlg.resize(300, 130)
         dlg.setMinimumSize(QtCore.QSize(300, 130))
         dlg.setMaximumSize(QtCore.QSize(300, 130))
