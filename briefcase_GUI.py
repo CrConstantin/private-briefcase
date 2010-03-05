@@ -386,12 +386,12 @@ class MainWindow(QtGui.QMainWindow):
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
         pushButton.setStatusTip(file_name)
-        if len(file_name)>15:
-            fname = file_name[:15]+' (...)'
+        if len(file_name)>13:
+            fname = file_name[:13]+' (...)'
         else:
             fname = file_name
         pushButton.setText(fname)
-        pushButton.setStyleSheet('text-align : left bottom;')
+        pushButton.setStyleSheet('text-align: left bottom; padding: 4px;')
         # Connect events.
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
@@ -435,7 +435,13 @@ class MainWindow(QtGui.QMainWindow):
                 '<br>Warning! "%s" is already open!<br>' % tab_name)
             return
         #
-        self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
+        try:
+            self.tabs[tab_name+'_pb'] = Briefcase(dir, pwd) # Briefcase for current tab.
+        except:
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Open',
+                '<br>Error! Wrong password!<br>')
+            return
+        #
         self._new_tab(tab_name)
         self.tabWidget.setCurrentWidget(self.tabs[tab_name]) # Must enable new tab.
         #
@@ -538,7 +544,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         # If caller is an action.
         if type(self.sender()) == type(QtGui.QPushButton()):
-            self.tabs[tab_name+'_pb'].ExportFile(str(self.sender().text()), execute=True)
+            self.tabs[tab_name+'_pb'].ExportFile(str(self.sender().objectName()), execute=True)
         # If caller is a button.
         else:
             qtBS = str(self.tabs[tab_name+'_bs'])
