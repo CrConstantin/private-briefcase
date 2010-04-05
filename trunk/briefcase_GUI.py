@@ -58,6 +58,7 @@ class CustomDialog(QtGui.QDialog):
         self.browse.setMinimumSize(QtCore.QSize(1, 20))
         self.browse.setText('...')
         self.dir = QtGui.QLineEdit(self)
+        self.dir.setFocus(0)
         self.dir.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.dir.setMinimumSize(QtCore.QSize(1, 22))
         self.pwd = QtGui.QLineEdit(self)
@@ -130,6 +131,7 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
         self.setObjectName('MainWindow')
         self.setWindowTitle('Private Briefcase GUI')
+        self.setWindowIcon(QtGui.QIcon('PB.ico'))
         #
         # Set central widget.
         self.centralwidget = QtGui.QWidget(self)
@@ -285,6 +287,13 @@ class MainWindow(QtGui.QMainWindow):
         self.dblClickTimer.setInterval(500)
         self.dblClickTimer.setSingleShot(True)
         #
+        # Default file for command line access.
+        try:
+            self.default_file = sys.argv[1]
+            self.on_open()
+        except:
+            self.default_file = ''
+        #
 
 
     # Helper functions.
@@ -423,6 +432,9 @@ class MainWindow(QtGui.QMainWindow):
         dlg = CustomDialog(self.centralwidget, 'Open briefcase file', 'Browse to the '\
             'directory where the Briefcase file is located. You must provite the correct '
             'password to be able to decrypt the files.', 'Open !')
+        if self.default_file:
+            dlg.dir.setText(self.default_file)
+            dlg.pwd.setFocus(0)
         dlg.exec_()
         dir, pwd = dlg.transmit['dir'], dlg.transmit['pwd']
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
