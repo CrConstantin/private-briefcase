@@ -16,12 +16,13 @@
   About:
 ----------
 
- - keeps your private files in one place, on HDD, in one big database;
- - all files are compressed with zlib 9, and crypted with AES 256;
- - you can add the same file several times. All changes are versioned and you can rollback anytime;
- - you can add files one by one, or multiple at the same time;
- - you can export one, or multiple files;
- - command line access to add and export, copy rename and delete;
+ - keeps all your private files in one place, on HDD, in one big database;
+ - all files are compressed with zlib 9, and optionally crypted with AES 256;
+ - you can add the same file several times, if you modify it. All changes are versioned and you can rollback anytime;
+ - files can be added one by one, or multiple at the same time;
+ - you can export one, or all files;
+ - command line access to add, export, copy, rename and delete;
+ - clean GUI to add, view, edit, version, rename and delete;
  - fast, secure, intuitive.
 
  - website : http://code.google.com/p/private-briefcase
@@ -29,7 +30,7 @@
 ------------
   Licence:
 ------------
-  Private-Briefcase is copyright © 2009, Cristi Constantin. All rights reserved.
+  Private-Briefcase is copyright © 2010, Cristi Constantin. All rights reserved.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
