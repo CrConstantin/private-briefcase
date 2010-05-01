@@ -13,7 +13,7 @@ import os, sys
 import shutil
 import glob
 import sqlite3
-import zlib
+import zlib, bz2
 import tempfile
 from time import clock
 from time import strftime
@@ -22,7 +22,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r45'
+__version__ = 'r46'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -80,11 +80,14 @@ class Briefcase:
         return 'X' * ((((L/16)+1)*16)-L)
 
 
-    def _transformb(self, bdata, pwd=''):
+    def _transformb(self, bdata, pwd='', arch='zlib'):
         '''
         Transforms any binary data into ready-to-write SQL information. \n\
         '''
-        vCompressed = zlib.compress(bdata,9)
+        if arch=='zlib':
+            vCompressed = zlib.compress(bdata,6)
+        elif arch=='bz2':
+            vCompressed = bz2.compress(bdata,9)
         # If password is null in some way, do not encrypt.
         if not pwd:
             return buffer(vCompressed)
@@ -110,12 +113,14 @@ class Briefcase:
         '''
         # If password is null in some way, do not encrypt.
         if not pwd:
-            return zlib.decompress(bdata)
+            try: return zlib.decompress(bdata)
+            except: return bz2.decompress(bdata)
         # If password has default value.
         elif pwd == 1:
             # If default value is null, do not encrypt.
             if not self.pwd:
-                return zlib.decompress(bdata)
+                try: return zlib.decompress(bdata)
+                except: return bz2.decompress(bdata)
             else:
                 pwd = self.pwd + self._normalize_16(len(self.pwd))
         # If password is provided, normalize it to 16 characters.
@@ -124,7 +129,8 @@ class Briefcase:
         # Now decrypt and return.
         crypt = AES.new(pwd)
         vCompressed = crypt.decrypt(bdata)
-        return zlib.decompress(vCompressed)
+        try: return zlib.decompress(vCompressed)
+        except: return bz2.decompress(vCompressed)
 
 
     def _log(self, level, msg):
@@ -474,7 +480,7 @@ class Briefcase:
             password = None
             pwd_hash = None
 
-        all_files = self.c.execute('select pwd, file from _files_ order by file').fetchall()[1:]
+        all_files = self.c.execute('select pwd, file from _files_ order by file').fetchall()
 
         # Temp_file[0] = pwd, Temp_file[1] = fname.
         for temp_file in all_files:
@@ -494,7 +500,7 @@ class Briefcase:
             w.close()
             self._log(2, 'Func ExportAll: File "%s" exported successfully.' % temp_file[1])
 
-        self._log(1, 'Exporting all files took %.4f sec.' % (clock()-ti))
+        self._log(1, 'Exporting %i files took %.4f sec.' % (len(all_files), clock()-ti))
         return 0
 
 

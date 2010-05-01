@@ -156,51 +156,57 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Setup actions.
         self.actionNew = QtGui.QAction(self)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-New.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionNew.setIcon(icon)
+        iconNew = QtGui.QIcon()
+        iconNew.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-New.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionNew.setIcon(iconNew)
         self.actionNew.setObjectName("actionNew")
         self.actionNew.setText("New")
         self.actionOpen = QtGui.QAction(self)
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Open.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionOpen.setIcon(icon1)
+        iconOpen = QtGui.QIcon()
+        iconOpen.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Open.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionOpen.setIcon(iconOpen)
         self.actionOpen.setObjectName("actionOpen")
         self.actionOpen.setText("Open")
         self.actionJoin = QtGui.QAction(self)
-        icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Join.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionJoin.setIcon(icon2)
+        iconJoin = QtGui.QIcon()
+        iconJoin.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Join.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionJoin.setIcon(iconJoin)
         self.actionJoin.setObjectName("actionJoin")
         self.actionJoin.setText("Join")
-        self.actionAdd_files = QtGui.QAction(self)
-        icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAdd_files.setIcon(icon3)
-        self.actionAdd_files.setObjectName("actionAdd_files")
-        self.actionAdd_files.setText("Add files")
+        self.actionAddFiles = QtGui.QAction(self)
+        iconAddFiles = QtGui.QIcon()
+        iconAddFiles.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionAddFiles.setIcon(iconAddFiles)
+        self.actionAddFiles.setObjectName("actionAddFiles")
+        self.actionAddFiles.setText("Add files")
+        self.actionExport = QtGui.QAction(self)
+        iconExport = QtGui.QIcon()
+        iconExport.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionExport.setIcon(iconExport)
+        self.actionExport.setObjectName("actionExport")
+        self.actionExport.setText("Export")
         self.actionProperties = QtGui.QAction(self)
-        icon4 = QtGui.QIcon()
-        icon4.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add-Many.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionProperties.setIcon(icon4)
+        iconProperties = QtGui.QIcon()
+        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionProperties.setIcon(iconProperties)
         self.actionProperties.setObjectName("actionProperties")
         self.actionProperties.setText("Properties")
         self.actionRefresh = QtGui.QAction(self)
-        icon5 = QtGui.QIcon()
-        icon5.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRefresh.setIcon(icon5)
+        iconRefresh = QtGui.QIcon()
+        iconRefresh.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionRefresh.setIcon(iconRefresh)
         self.actionRefresh.setObjectName("actionRefresh")
         self.actionRefresh.setText("Refresh")
         self.actionHelp = QtGui.QAction(self)
-        icon6 = QtGui.QIcon()
-        icon6.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionHelp.setIcon(icon6)
+        iconHelp = QtGui.QIcon()
+        iconHelp.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionHelp.setIcon(iconHelp)
         self.actionHelp.setObjectName("actionHelp")
         self.actionHelp.setText("Help")
         self.actionAbout = QtGui.QAction(self)
-        icon7 = QtGui.QIcon()
-        icon7.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Information.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAbout.setIcon(icon7)
+        iconAbout = QtGui.QIcon()
+        iconAbout.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Information.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionAbout.setIcon(iconAbout)
         self.actionAbout.setObjectName("actionAbout")
         self.actionAbout.setText("About")
         #
@@ -218,8 +224,10 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionOpen)
         self.actionJoin.triggered.connect(self.on_join)
         toolBar.addAction(self.actionJoin)
-        self.actionAdd_files.triggered.connect(self.on_add)
-        toolBar.addAction(self.actionAdd_files)
+        self.actionAddFiles.triggered.connect(self.on_add)
+        toolBar.addAction(self.actionAddFiles)
+        self.actionExport.triggered.connect(self.on_export)
+        toolBar.addAction(self.actionExport)
         self.actionProperties.triggered.connect(self.on_db_properties)
         toolBar.addAction(self.actionProperties)
         self.actionRefresh.triggered.connect(self.on_refresh)
@@ -231,39 +239,39 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Button actions.
         self.actionView = QtGui.QAction(self)
-        icon8 = QtGui.QIcon()
-        icon8.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-View.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionView.setIcon(icon8)
+        iconView = QtGui.QIcon()
+        iconView.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-View.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionView.setIcon(iconView)
         self.actionView.setObjectName("actionView")
         self.actionView.setText("View")
         self.actionEdit = QtGui.QAction(self)
-        icon9 = QtGui.QIcon()
-        icon9.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Edit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionEdit.setIcon(icon9)
+        iconEdit = QtGui.QIcon()
+        iconEdit.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Edit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionEdit.setIcon(iconEdit)
         self.actionEdit.setObjectName("actionEdit")
         self.actionEdit.setText("Edit")
         self.actionCopy = QtGui.QAction(self)
-        icon10 = QtGui.QIcon()
-        icon10.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionCopy.setIcon(icon10)
+        iconCopy = QtGui.QIcon()
+        iconCopy.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionCopy.setIcon(iconCopy)
         self.actionCopy.setObjectName("actionCopy")
         self.actionCopy.setText("Copy")
         self.actionDelete = QtGui.QAction(self)
-        icon11 = QtGui.QIcon()
-        icon11.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Delete.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionDelete.setIcon(icon11)
+        iconDelete = QtGui.QIcon()
+        iconDelete.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Delete.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionDelete.setIcon(iconDelete)
         self.actionDelete.setObjectName("actionDelete")
         self.actionDelete.setText("Delete")
         self.actionRename = QtGui.QAction(self)
-        icon12 = QtGui.QIcon()
-        icon12.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Rename.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRename.setIcon(icon12)
+        iconRename = QtGui.QIcon()
+        iconRename.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Rename.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionRename.setIcon(iconRename)
         self.actionRename.setObjectName("actionRename")
         self.actionRename.setText("Rename")
         self.actionProperties = QtGui.QAction(self)
-        icon13 = QtGui.QIcon()
-        icon13.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionProperties.setIcon(icon13)
+        iconProperties = QtGui.QIcon()
+        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionProperties.setIcon(iconProperties)
         self.actionProperties.setObjectName("actionProperties")
         self.actionProperties.setText("Properties")
         #
@@ -347,10 +355,10 @@ class MainWindow(QtGui.QMainWindow):
 
     def right_click(self):
         #
-        p = self.cursor().pos()
+        vPos = self.cursor().pos()
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
-        self.tabs[tab_name+'_bs'] = self.childAt(self.mapFromGlobal(p)).objectName() # Selected button.
-        self.qtMenu.exec_(self.cursor().pos()) # Execute menu.
+        self.tabs[tab_name+'_bs'] = self.childAt(self.mapFromGlobal(vPos)).objectName() # Selected button.
+        self.qtMenu.exec_(vPos) # Execute menu.
         #
 
     def _new_tab(self, tab_name):
@@ -378,12 +386,12 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.tabText(index))
         self.tabWidget.removeTab(index)
         #
-        del self.tabs[tab_name+'_bs']
-        for btn in self.tabs[tab_name+'_btns']:
+        del self.tabs[tab_name+'_bs'] # Del selected buttons.
+        for btn in self.tabs[tab_name+'_btns']: # Del each buttons.
             del btn
-        del self.tabs[tab_name+'_btns']
-        del self.tabs[tab_name+'_c']
-        del self.tabs[tab_name]
+        del self.tabs[tab_name+'_btns'] # Del buttons pointer.
+        del self.tabs[tab_name+'_c']    # Del contents.
+        del self.tabs[tab_name]         # Del tab.
         #
 
     def _new_button(self, tab_name, file_name):
@@ -506,6 +514,22 @@ class MainWindow(QtGui.QMainWindow):
             self._new_button(tab_name, file_name)
         #
         self.sort_btns()
+        #
+
+    def on_export(self):
+        #
+        try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        except :
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Export',
+                '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
+            return
+        #
+        f = QtGui.QFileDialog()
+        input = f.getExistingDirectory(self.centralwidget, 'Select a folder to export into :',
+            os.getcwd())
+        if input:
+            self.tabs[tab_name+'_pb'].ExportAll(input)
+            QtGui.QMessageBox.information(self.centralwidget, 'Export', 'Export finished !')
         #
 
     def on_refresh(self):
