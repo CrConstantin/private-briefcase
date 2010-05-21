@@ -22,7 +22,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r46'
+__version__ = 'r47'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -32,10 +32,10 @@ class Briefcase:
     def __init__(self, database='Data.prv', password=''):
         '''
         Create new Database, or connect to an old Database. \n\
-        If you don't know the correct password, you cannot acces the crypted data from tables,
-        so don't delete the code that checks the password. Make sure you remember the password. \n\
-        Valid passwords : a string or a null value. \n\
-        One SQLITE3 file for each Briefcase instance. \n\
+        If you don't know the correct password, you cannot acces the crypted data from tables. \n\
+        Make sure you remember the password. \n\
+        Valid passwords : a string, a null value, or False. \n\
+        One SQLITE3 file is used for each Briefcase instance. \n\
         '''
         #
         global __version__
@@ -56,8 +56,9 @@ class Briefcase:
         if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
             self.gpwd_hash = md4.hexdigest()
-        # If password is null in some way, hash must be also null.
+        # If password is invalid, or null in some way, both password and hash must be null.
         else:
+            self.pwd = None
             password = None
             self.gpwd_hash = None
 
@@ -77,12 +78,16 @@ class Briefcase:
 
 
     def _normalize_16(self, L):
-        return 'X' * ((((L/16)+1)*16)-L)
+        '''
+        16 characters.
+        '''
+        return 'X' * ( (((L/16)+1)*16) - L )
 
 
     def _transformb(self, bdata, pwd='', arch='zlib'):
         '''
         Transforms any binary data into ready-to-write SQL information. \n\
+        zlib is faster, bz2 is stronger. \n\
         '''
         if arch=='zlib':
             vCompressed = zlib.compress(bdata,6)
@@ -136,6 +141,8 @@ class Briefcase:
     def _log(self, level, msg):
         '''
         Prints debug and error messages. \n\
+        level -> 2=fatal error, 1=info message. \n\
+        msg -> message to be printed. \n\
         '''
         if self.verbose <= 0:
             # Don't print anything.
@@ -154,7 +161,8 @@ class Briefcase:
     def SetLabels(self, fname, labels):
         '''
         Set labels/ tags/ keywords for one filename. Labels can be used to sort and filter files. \n\
-        Labels must be a ";"-separated string, a list, or a tuple. Any character excepting ";" can be used.\n\
+        Labels must be : a ";"-separated string, a list, or a tuple. \n\
+        Any character excepting ";" can be used as label. \n\
         '''
         ti = clock()
 
@@ -189,7 +197,7 @@ class Briefcase:
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
-        Each row contains : Version, Raw-data, Hash of original data, Date and Time, User Name. \n\
+        Each row contains : Version, Raw-data, Hash of original data, Size, Date Time, User Name. \n\
         Raw-data is : original binary data -> compressed -> crypted. \n\
         Versionable=False checks if the file is in the database. If it is, an error is raised
         and the file is not added. \n\
@@ -286,15 +294,15 @@ class Briefcase:
         '''
         ti = clock()
         path = os.path.split(pathregex)[0]
-        pathreg = pathregex.replace('[', '[[]') # Fix possible bug in Windows ?
 
         if not os.path.exists(path):
             self._log(2, 'Func AddManyFiles: path "%s" doesn\'t exist!' % path)
             return -1
 
+        pathreg = pathregex.replace('[', '[[]') # Fix possible bug in Windows ?
         files = glob.glob(pathreg)
 
-        if not len(files):
+        if not files:
             self._log(2, 'Func AddManyFiles: there are no files to match "%s"!' % pathregex)
             return -1
 
@@ -496,6 +504,7 @@ class Briefcase:
             md4 = MD4.new(temp_file[1])
             filename = 't'+md4.hexdigest()
             latest_version = self.c.execute('select raw from %s order by version desc' % filename).fetchone()
+            # Now write decompressed/ decrypted data.
             w.write(self._restoreb(latest_version[0], password))
             w.close()
             self._log(2, 'Func ExportAll: File "%s" exported successfully.' % temp_file[1])
@@ -618,6 +627,7 @@ class Briefcase:
         lf = []
         for elem in li:
             lf.append(elem[0])
+        del li
         self._log(1, 'Get file list took %.4f sec.' % (clock()-ti))
         return lf
 
@@ -669,7 +679,11 @@ class Briefcase:
 
 if __name__ == '__main__':
 
-    if not sys.argv[1:]:
+    '''
+    This is work in progress...
+    '''
+
+    if not sys.argv[3:]:
         print('You must specify 3 arguments. Try "-h" parameter to see the complete list of commands.')
         exit(1)
 
@@ -679,13 +693,12 @@ if __name__ == '__main__':
 
     parser.add_option("-b", "-q", "--brief", "--quiet", dest="verbose", action="store_false", default=False, help="Prints the version.")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=True, help="Prints the version.")
-    parser.add_option("--db", dest="database", help="The name of the briefcase file.")
+    parser.add_option("--db", "--file", dest="database", help="The name of the briefcase file.")
     parser.add_option("--pwd", "--pass", dest="password", help="The password of the briefcase file.")
 
     parser.add_option("--addfile", action="store", nargs=2, help="-.")
     parser.add_option("--addmanyfiles", action="store", nargs=2, help="-.")
     parser.add_option("--copyintonew", action="store", nargs=3, help="-.")
-    parser.add_option("--getversion", action="store", nargs=1, help="-.")
     parser.add_option("--exportfile", action="store", nargs=4, help="-.")
     parser.add_option("--exportall", action="store", nargs=1, help="-.")
     parser.add_option("--renfile", action="store", nargs=2, help="-.")
