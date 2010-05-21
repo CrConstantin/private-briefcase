@@ -386,7 +386,7 @@ class MainWindow(QtGui.QMainWindow):
         tab_name = str(self.tabWidget.tabText(index))
         self.tabWidget.removeTab(index)
         #
-        del self.tabs[tab_name+'_bs'] # Del selected buttons.
+        del self.tabs[tab_name+'_bs']  # Del selected buttons.
         for btn in self.tabs[tab_name+'_btns']: # Del each buttons.
             del btn
         del self.tabs[tab_name+'_btns'] # Del buttons pointer.
@@ -474,6 +474,7 @@ class MainWindow(QtGui.QMainWindow):
     def on_join(self):
         #
         print( 'Triggered JOIN !' )
+        # Some code goes in here...
         #
 
     def on_add(self):
@@ -528,7 +529,7 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getExistingDirectory(self.centralwidget, 'Select a folder to export into :',
             os.getcwd())
         if input:
-            self.tabs[tab_name+'_pb'].ExportAll(input)
+            self.tabs[tab_name+'_pb'].ExportAll(str(input))
             QtGui.QMessageBox.information(self.centralwidget, 'Export', 'Export finished !')
         #
 
@@ -638,6 +639,7 @@ class MainWindow(QtGui.QMainWindow):
                 self.tabs[tab_name+'_btns'][qtBS].setObjectName(qtTxt)
                 self.tabs[tab_name+'_btns'][qtBS].setStatusTip(qtTxt)
                 self.tabs[tab_name+'_btns'][qtBS].setText(qtTxt)
+                # Pass the pointer to the new name.
                 self.tabs[tab_name+'_btns'][str(qtTxt)] = self.tabs[tab_name+'_btns'][qtBS]
                 del self.tabs[tab_name+'_btns'][qtBS]
                 self.sort_btns()
