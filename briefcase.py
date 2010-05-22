@@ -37,7 +37,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r47'
+__version__ = 'r49'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -94,7 +94,7 @@ class Briefcase:
 
     def _normalize_16(self, L):
         '''
-        16 characters.
+        Normalize a string to 16 characters.
         '''
         return 'X' * ( (((L/16)+1)*16) - L )
 
@@ -156,8 +156,7 @@ class Briefcase:
     def _log(self, level, msg):
         '''
         Prints debug and error messages. \n\
-        level -> 2=fatal error, 1=info message. \n\
-        msg -> message to be printed. \n\
+        level 1 = info message, level 2 = fatal error. \n\
         '''
         if self.verbose <= 0:
             # Don't print anything.
@@ -176,7 +175,7 @@ class Briefcase:
     def SetLabels(self, fname, labels):
         '''
         Set labels/ tags/ keywords for one filename. Labels can be used to sort and filter files. \n\
-        Labels must be : a ";"-separated string, a list, or a tuple. \n\
+        Labels must be : ";"-separated string, a list, or a tuple. \n\
         Any character excepting ";" can be used as label. \n\
         '''
         ti = clock()
@@ -201,7 +200,7 @@ class Briefcase:
             self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
             return -1
 
-        # Updata labels in _tables_.
+        # Update labels in _tables_.
         self.c.execute('update _files_ set labels=? where file=?', [sLabels, fname.lower()])
         self.conn.commit()
         self._log(1, 'Setting labels for file "%s" took %.4f sec.' % (fname, clock()-ti))
@@ -661,6 +660,7 @@ class Briefcase:
         Returns a list with all the files from current Briefcase file. \n\
         Can sort/ filter after file name, size, date added. \n\
         Labels and user name can only be used as ffilter. \n\
+        On error, it returns -1. \n\
         '''
         ti = clock()
 
@@ -742,7 +742,7 @@ class Briefcase:
 if __name__ == '__main__':
 
     '''
-    This is work in progress...
+    This is a work in progress...
     '''
 
     if not sys.argv[3:]:
