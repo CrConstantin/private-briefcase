@@ -650,18 +650,19 @@ class MainWindow(QtGui.QMainWindow):
         #
         tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
         qtBS = str(self.tabs[tab_name+'_bs']) # Selected button.
-        prop = self.tabs[tab_name+'_pb'].GetProperties(fname=qtBS)
+        prop = self.tabs[tab_name+'_pb'].FileStatistics(fname=qtBS)
         if not prop['labels']:
             prop['labels'] = '-'
         QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
             <br><b>fileName</b> : %(fileName)s
-            <br><b>internFileName</b> : %(internFileName)s
-            <br><b>firstFileSize</b> : %(firstFileSize)i
-            <br><b>lastFileSize</b> : %(lastFileSize)i
-            <br><b>firstFileDate</b> : %(firstFileDate)s
-            <br><b>lastFileDate</b> : %(lastFileDate)s
-            <br><b>firstFileUser</b> : %(firstFileUser)s
-            <br><b>lastFileUser</b> : %(lastFileUser)s
+            <br><b>intern FileName</b> : %(internFileName)s
+            <br><b>first FileSize</b> : %(firstFileSize)i
+            <br><b>last FileSize</b> : %(lastFileSize)i
+            <br><b>largest Size</b> : %(biggestSize)i
+            <br><b>first FileDate</b> : %(firstFileDate)s
+            <br><b>last FileDate</b> : %(lastFileDate)s
+            <br><b>first FileUser</b> : %(firstFileUser)s
+            <br><b>last FileUser</b> : %(lastFileUser)s
             <br><b>labels</b> : %(labels)s
             <br><b>versions</b> : %(versions)i<br>''' % prop)
         del tab_name, qtBS, prop

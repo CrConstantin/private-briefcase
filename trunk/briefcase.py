@@ -8,8 +8,23 @@
     External dependencies : Python Crypto. \n\
 '''
 
+'''
+    Every briefcase file is an SQLITE3 database containing : \n\
+    - _info_ table : pwd BLOB, date TEXT, user TEXT, version TEXT; \n\
+        it stores global password for database (hashed), date created, version of briefcase software. \n\
+    - _files_ table : file TEXT unique, pwd BLOB, labels TEXT; \n\
+        it stores the original name of files, hashed password and the labels. \n\
+    - _statistics_ table : \n\
+        file TEXT unique, size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT,
+        user0 TEXT, user TEXT, labels TEXT; \n\
+        it stores information about every file, everytime a file is added or removed. \n\
+    - other tables, one table for each new file : \n\
+        version integer primary key asc, raw BLOB, hash TEXT, size INTEGER, date TEXT, user TEXT. \n\
+'''
+
 # Standard libraries.
 import os, sys
+import re
 import shutil
 import glob
 import sqlite3
@@ -67,7 +82,7 @@ class Briefcase:
             if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
         else:
-            # Create _files_ table with original names of the files and passwords.
+            # Create _files_ table with original names of the files and hashed passwords.
             self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
             # Create _info_ table with database password, date created and user.
             self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)')
@@ -204,6 +219,7 @@ class Briefcase:
         '''
         ti = clock()
         fpath = filepath.lower()
+        fname = os.path.split(fpath)[1]
 
         if not os.path.exists(fpath):
             self._log(2, 'Func AddFile: file path "%s" doesn\'t exist!' % filepath)
@@ -221,7 +237,7 @@ class Briefcase:
             password = None
             pwd_hash = None
 
-        md4 = MD4.new( os.path.split(fpath)[1] )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
 
@@ -261,7 +277,7 @@ class Briefcase:
         old_hash = self.c.execute('select hash from %s order by version desc' % filename).fetchone()
         if old_hash and hash == old_hash[0]:
             self._log(2, 'Func AddFile: file "%s" is IDENTICAL with the version stored in the '\
-                'database!' % os.path.split(fpath)[1])
+                'database!' % fname)
             return -1
 
         self.c.execute(('insert into %s (raw, hash, size, date, user) values (?,?,?,?,?)' % filename),
@@ -269,13 +285,15 @@ class Briefcase:
 
         # If password is None, or password is False.
         if not password:
-            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [password, os.path.split(fpath)[1]])
+            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [password, fname])
         # If password is provided by user, insert its hash in _files_ table.
         else:
-            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [pwd_hash, os.path.split(fpath)[1]])
+            self.c.execute('insert or ignore into _files_ (pwd, file) values (?,?)', [pwd_hash, fname])
 
         # Set the labels...
-        self.SetLabels(os.path.split(fpath)[1], labels)
+        self.SetLabels(fname, labels)
+        # File statistics...
+        self.FileStatistics(fname)
 
         # Everything is fine, save.
         self.conn.commit()
@@ -365,6 +383,7 @@ class Briefcase:
         more = self.c.execute('select pwd, labels from _files_ where file=?', [fname.lower()]).fetchone()
 
         self.c.execute('insert into _files_ (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
+        self.FileStatistics(new_fname)
         self.conn.commit()
 
         self._log(1, 'Copying file "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
@@ -532,7 +551,8 @@ class Briefcase:
         new_filename = 't'+md4.hexdigest()
         del md4
 
-        if self.c.execute('select * from _files_ where file="%s"' % (new_fname.lower())).fetchone():
+        # Check file existence.
+        if self.c.execute('select version from %s' % new_filename).fetchone():
             self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
@@ -561,6 +581,7 @@ class Briefcase:
         if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
+            self.FileStatistics(fname)
             self.conn.commit()
             self._log(1, 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti))
             return 0
@@ -568,6 +589,7 @@ class Briefcase:
             try:
                 self.c.execute('drop table %s' % filename)
                 self.c.execute('delete from _files_ where file="%s"' % fname.lower())
+                self.FileStatistics(fname)
                 self.conn.commit()
                 self._log(1, 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
                 return 0
@@ -576,11 +598,13 @@ class Briefcase:
                 return -1
 
 
-    def GetProperties(self, fname):
+    def FileStatistics(self, fname, silent=True):
         '''
         Returns a dictionary, containing the following key-value pairs : \n\
-        fileName, firstFileDate, lastFileDate, firstFileUser, lastFileUser, versions. \n\
-        If the file has 1 version, firstFileDate==lastFileDate and firstFileUser==lastFileUser. \n\
+        fileName, firstSize, lastSize, firstFileDate, lastFileDate, biggestSize,
+        firstFileUser, lastFileUser, fileLabels, versions. \n\
+        If the file has 1 version, firstSize==lastSize and firstFileDate==lastFileDate and 
+        firstFileUser==lastFileUser. \n\
         On error, it returns -1. \n\
         '''
         ti = clock()
@@ -588,48 +612,88 @@ class Briefcase:
         filename = 't'+md4.hexdigest()
         del md4
 
-        try:
-            # Size.
-            firstFileSize = self.c.execute('select size from %s order by version asc' %
-                filename).fetchone()[0]
-            lastFileSize = self.c.execute('select size from %s order by version desc' %
-                filename).fetchone()[0]
-            firstFileDate = self.c.execute('select date from %s order by version asc' %
-                filename).fetchone()[0]
-            lastFileDate = self.c.execute('select date from %s order by version desc' %
-                filename).fetchone()[0]
-            firstFileUser = self.c.execute('select user from %s order by version asc' %
-                filename).fetchone()[0]
-            lastFileUser = self.c.execute('select user from %s order by version desc' %
-                filename).fetchone()[0]
-            labels = self.c.execute('select labels from _files_ where file="%s"' %
-                fname.lower()).fetchone()[0]
-            versions = len( self.c.execute('select version from %s' % filename).fetchall() )
-            #
-            self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
-            return {'fileName':fname, 'internFileName':filename,
-                'firstFileSize':firstFileSize, 'lastFileSize':lastFileSize,
-                'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
-                'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser,
-                'labels':labels, 'versions':versions}
-        except:
-            self._log(2, 'Func GetProperties: cannot find the file called "%s"!' % fname)
+        # Check file existence.
+        if not self.c.execute('select version from %s' % filename).fetchone():
+            self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
             return -1
 
+        self.c.execute('create table if not exists _statistics_ (file TEXT unique, '
+            'size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, '
+            'user0 TEXT, user TEXT, labels TEXT)')
 
-    def GetFileList(self, sort='', filter=''):
+        # Size.
+        biggestSize = self.c.execute('select size from %s order by size desc' %
+            filename).fetchone()[0]
+        firstFileSize = self.c.execute('select size from %s order by version asc' %
+            filename).fetchone()[0]
+        lastFileSize = self.c.execute('select size from %s order by version desc' %
+            filename).fetchone()[0]
+        # Date added.
+        firstFileDate = self.c.execute('select date from %s order by version asc' %
+            filename).fetchone()[0]
+        lastFileDate = self.c.execute('select date from %s order by version desc' %
+            filename).fetchone()[0]
+        # User added.
+        firstFileUser = self.c.execute('select user from %s order by version asc' %
+            filename).fetchone()[0]
+        lastFileUser = self.c.execute('select user from %s order by version desc' %
+            filename).fetchone()[0]
+        labels = self.c.execute('select labels from _files_ where file="%s"' %
+            fname.lower()).fetchone()[0]
+        versions = len( self.c.execute('select version from %s' % filename).fetchall() )
+
+        self.c.execute('insert or replace into _statistics_ (file, size0, size, sizeB, '
+            'date0, date, user0, user, labels) values (?,?,?,?,?,?,?,?,?)', [fname.lower(),
+            firstFileSize, lastFileSize, biggestSize, firstFileDate, lastFileDate,
+            firstFileUser, lastFileUser, labels])
+
+        if not silent:
+            self._log(1, 'Get properties for file "%s" took %.4f sec.' % (fname, clock()-ti))
+        return {'fileName':fname, 'internFileName':filename, 'biggestSize':biggestSize,
+            'firstFileSize':firstFileSize, 'lastFileSize':lastFileSize,
+            'firstFileDate':firstFileDate, 'lastFileDate':lastFileDate,
+            'firstFileUser':firstFileUser, 'lastFileUser':lastFileUser,
+            'labels':labels, 'versions':versions}
+
+
+    def GetFileList(self, ssort='', ffilter=''):
         '''
         Returns a list with all the files from current Briefcase file. \n\
-        Cannot have errors. \n\
+        Can sort/ filter after file name, size, date added. \n\
+        Labels and user name can only be used as ffilter. \n\
         '''
         ti = clock()
-        li = self.c.execute('select file from _files_ order by file asc').fetchall()
-        lf = []
-        for elem in li:
-            lf.append(elem[0])
-        del li
+
+        if (not ssort) and (not ffilter):
+            vList = self.c.execute('select file from _files_ order by file asc').fetchall()
+            self._log(1, 'Get file list took %.4f sec.' % (clock()-ti))
+            return [vElem[0] for vElem in vList]
+
+        # Validate sort expression.
+        if ssort and ssort.lower() not in ['file asc', 'file desc', 'size0 asc', 'size0 desc',
+            'size desc', 'size desc', 'sizeb asc', 'sizeb desc',
+            'date0 asc', 'date0 desc', 'date asc', 'date desc']: 
+            self._log(2, 'Func GetFileList: sort "%s" is incorrect!' % ssort)
+            return -1
+        # Validate filter expression.
+        if ffilter and not re.match('(file|labels|size0|size|sizeb|date0|date|user0|user)[ ]*',
+            ffilter.lower()):
+            self._log(2, 'Func GetFileList: filter "%s" is incorrect!' % ffilter)
+            return -1
+
+        if ssort:
+            ssort = 'order by ' + ssort
+        if ffilter:
+            ffilter = 'where ' + ffilter
+
+        try:
+            vList = self.c.execute('select file from _statistics_ %s %s' % (ffilter, ssort)).fetchall()
+        except:
+            self._log(2, 'Func GetFileList: sql expression "%s %s" incorrect in context!' % (ffilter, ssort))
+            return -1
+
         self._log(1, 'Get file list took %.4f sec.' % (clock()-ti))
-        return lf
+        return [vElem[0] for vElem in vList]
 
 
     def GetLabelsList(self):
@@ -638,17 +702,15 @@ class Briefcase:
         Cannot have errors. \n\
         '''
         ti = clock()
-        li = self.c.execute('select distinct labels from _files_').fetchall()
-        lf = []
-        for elem in li:
-            lf.append(elem[0])
-        li = ';'.join(lf)
-        lf = li.split(';')
-        li = list(set(lf))
-        if str(li[0]) == '':
-            del li[0]
+        vList = self.c.execute('select distinct labels from _files_').fetchall()
+        vFinal = [vElem[0] for vElem in vList]
+        vList = ';'.join(vFinal)
+        vFinal = vList.split(';')
+        vList = sorted(list(set(vFinal)))
+        if str(vList[0]) == '':
+            del vList[0]
         self._log(1, 'Get labels list took %.4f sec.' % (clock()-ti))
-        return sorted(li)
+        return vList
 
 
     def Info(self):
