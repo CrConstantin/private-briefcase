@@ -43,6 +43,9 @@ b.ExportFile('GPL v3.txt', password=False, execute=True)
 print( '\nPrint file list.' )
 print( b.GetFileList() )
 
+print( '\nPrint log.' )
+print( b.c.execute('select msg from _logs_').fetchall() )
+
 print( '\nDone !' )
 
 # Eof()

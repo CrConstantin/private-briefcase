@@ -2,9 +2,9 @@
 
 '''
     Briefcase-Project v1.0 \n\
-    Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
+    Copyright (C) 2009-2010, Cristi Constantin. All rights reserved. \n\
     This module contains Briefcase class with all its functions. \n\
-    Tested on Windows XP, with Python 2.6. \n\
+    Tested on Windows XP and Windows 7, with Python 2.6. \n\
     External dependencies : Python Crypto. \n\
 '''
 
@@ -81,14 +81,28 @@ class Briefcase:
             # Test user password versus database password.
             if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
+
+        # Create _files_ table with original names of the files and hashed passwords.
+        self.c.execute('create table if not exists _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
+        # Create _info_ table with database password, date created and user.
+        self.c.execute('create table if not exists _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)')
+        # Create _statistics_ table.
+        self.c.execute('create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, '
+            'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)')
+        # Create _logs_ table.
+        self.c.execute('create table if not exists _logs_ (date TEXT, msg TEXT)')
+
+        if exists_db:
+            self.c.execute('insert into _logs_ (date, msg) values (?,?)',
+            [strftime("%Y-%m-%d %H:%M:%S"), ('Username %s opens database.' % os.getenv('USERNAME'))])
         else:
-            # Create _files_ table with original names of the files and hashed passwords.
-            self.c.execute('create table _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
-            # Create _info_ table with database password, date created and user.
-            self.c.execute('create table _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)')
             self.c.execute('insert into _info_ (pwd, date, user, version) values (?,?,?,?)',
                 [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME'), __version__])
-            self.conn.commit()
+            self.c.execute('insert into _logs_ (date, msg) values (?,?)',
+            [strftime("%Y-%m-%d %H:%M:%S"), ('Username %s creates database.' % os.getenv('USERNAME'))])
+
+        #
+        self.conn.commit()
         #
 
 
@@ -104,10 +118,10 @@ class Briefcase:
         Transforms any binary data into ready-to-write SQL information. \n\
         zlib is faster, bz2 is stronger. \n\
         '''
-        if arch=='zlib':
-            vCompressed = zlib.compress(bdata,6)
-        elif arch=='bz2':
-            vCompressed = bz2.compress(bdata,9)
+        if arch=='bz2':
+            vCompressed = bz2.compress(bdata,6)
+        else:
+            vCompressed = zlib.compress(bdata,9)
         # If password is null in some way, do not encrypt.
         if not pwd:
             return buffer(vCompressed)
@@ -153,11 +167,17 @@ class Briefcase:
         except: return bz2.decompress(vCompressed)
 
 
-    def _log(self, level, msg):
+    def _log(self, level, msg, log=True):
         '''
         Prints debug and error messages. \n\
         level 1 = info message, level 2 = fatal error. \n\
+        verbose 0 = silence, verbose 1 = print errors, verbose 2 = print all. \n\
         '''
+
+        if log:
+            self.c.execute('insert into _logs_ (date, msg) values (?,?)',
+                [strftime("%Y-%m-%d %H:%M:%S"), msg])
+
         if self.verbose <= 0:
             # Don't print anything.
             return 0
@@ -166,7 +186,7 @@ class Briefcase:
             if level == 2:
                 print( msg )
                 return 1
-        elif self.verbose == 2:
+        elif self.verbose >= 2:
             # All messages are printed.
             print( msg )
             return 2
@@ -615,10 +635,6 @@ class Briefcase:
         if not self.c.execute('select version from %s' % filename).fetchone():
             self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
             return -1
-
-        self.c.execute('create table if not exists _statistics_ (file TEXT unique, '
-            'size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, '
-            'user0 TEXT, user TEXT, labels TEXT)')
 
         # Size.
         biggestSize = self.c.execute('select size from %s order by size desc' %
