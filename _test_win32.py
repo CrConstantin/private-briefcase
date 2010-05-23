@@ -13,7 +13,7 @@ b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\b*.jpg', 1, 'more labels;even more lab
 print( '\nAdding a few More files with False pass.' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\t*.jpg', False)
 
-print( '\nAdding a More files with password.' )
+print( '\nAdding a few More files with password.' )
 b.AddManyFiles(r'c:\WINDOWS\Web\Wallpaper\a*.jpg', 'pwd', 'a;b;c;d;label')
 
 print( '\nPrinting file list.' )
@@ -38,7 +38,7 @@ print( '\nTry to copy inexistent file.' )
 b.CopyIntoNew('asd.jpg', 1, 'copy_error.jpg')
 
 print( '\nGet properties for copied/ copied/ renamed file.' )
-print(b.GetProperties('to_delete2.jpg'))
+print(b.FileStatistics('to_delete2.jpg'))
 
 print( '\nDelete one file.' )
 b.DelFile('to_delete.jpg')

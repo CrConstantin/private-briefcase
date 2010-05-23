@@ -18,6 +18,9 @@
         file TEXT unique, size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT,
         user0 TEXT, user TEXT, labels TEXT; \n\
         it stores information about every file, everytime a file is added or removed. \n\
+    -  _logs_ table : \n\
+        _logs_ (date TEXT, msg TEXT); \n\
+        all actions can be stored in here. \n\
     - other tables, one table for each new file : \n\
         version integer primary key asc, raw BLOB, hash TEXT, size INTEGER, date TEXT, user TEXT. \n\
 '''
@@ -37,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r49'
+__version__ = 'r51'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -313,7 +316,6 @@ class Briefcase:
         self.SetLabels(fname, labels)
         # File statistics...
         self.FileStatistics(fname)
-
         # Everything is fine, save.
         self.conn.commit()
 
@@ -571,13 +573,14 @@ class Briefcase:
         del md4
 
         # Check file existence.
-        if self.c.execute('select version from %s' % new_filename).fetchone():
+        if self.c.execute('select file from _files_ where file = ?', [new_fname]).fetchone():
             self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
         try:
             self.c.execute('alter table %s rename to %s' % (filename, new_filename))
             self.c.execute('update _files_ set file = ? where file = ?', [new_fname, fname])
+            self.c.execute('update _statistics_ set file = ? where file = ?', [new_fname, fname])
             self.conn.commit()
             self._log(1, 'Renaming from "%s" into "%s" took %.4f sec.' % (fname, new_fname, clock()-ti))
             return 0
@@ -600,7 +603,6 @@ class Briefcase:
         if version > 0:
             self.c.execute('delete from %s where version=%s' % (filename, version))
             self.c.execute('reindex %s' % filename)
-            self.FileStatistics(fname)
             self.conn.commit()
             self._log(1, 'Deleting file "%s" version "%i" took %.4f sec.' % (fname, version, clock()-ti))
             return 0
@@ -608,7 +610,7 @@ class Briefcase:
             try:
                 self.c.execute('drop table %s' % filename)
                 self.c.execute('delete from _files_ where file="%s"' % fname.lower())
-                self.FileStatistics(fname)
+                self.c.execute('delete from _statistics_ where file="%s"' % fname.lower())
                 self.conn.commit()
                 self._log(1, 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
                 return 0
@@ -632,7 +634,7 @@ class Briefcase:
         del md4
 
         # Check file existence.
-        if not self.c.execute('select version from %s' % filename).fetchone():
+        if not self.c.execute('select file from _files_ where file = ?', [fname]).fetchone():
             self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
             return -1
 
