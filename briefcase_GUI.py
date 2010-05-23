@@ -5,7 +5,7 @@
     Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
     Website : http://private-briefcase.googlecode.com \n\
     This module contains Briefcase class with all its functions. \n\
-    Tested on Windows XP, with Python 2.6. \n\
+    Tested on Windows XP and Windows 7, with Python 2.6. \n\
     External dependencies : pyQt4. \n\
 '''
 
