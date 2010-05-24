@@ -61,6 +61,9 @@ b.ExportAll('temp', False) # With false pass.
 b.ExportAll('temp', 'pwd') # With password 1.
 b.ExportAll('temp', 'pass') # With password 2.
 
+print( '\nCleanup briefcase file.' )
+print( b.Cleanup() )
+
 print( '\nPrinting file list for the last time.' )
 print( b.GetFileList() )
 
