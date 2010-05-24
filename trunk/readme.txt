@@ -17,6 +17,7 @@
 ----------
 
  - keeps all your private files in one place, on HDD, in one big database;
+ - briefcase files are portable;
  - all files are compressed with zlib 6 or bz2 9, and optionally crypted with AES 256;
  - you can add the same file several times, if you modify it. All changes are versioned and you can rollback anytime;
  - files can be added one by one, or multiple at the same time;

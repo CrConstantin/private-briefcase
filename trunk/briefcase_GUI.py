@@ -10,7 +10,7 @@
 '''
 
 # Standard libraries.
-import os, sys, PyQt4
+import os, sys
 
 # External dependency.
 from briefcase import *
@@ -161,48 +161,67 @@ class MainWindow(QtGui.QMainWindow):
         self.actionNew.setIcon(iconNew)
         self.actionNew.setObjectName("actionNew")
         self.actionNew.setText("New")
+        self.actionNew.setToolTip("Create new briefcase")
+        #
         self.actionOpen = QtGui.QAction(self)
         iconOpen = QtGui.QIcon()
         iconOpen.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Open.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionOpen.setIcon(iconOpen)
         self.actionOpen.setObjectName("actionOpen")
         self.actionOpen.setText("Open")
+        self.actionOpen.setToolTip("Open existing briefcase")
+        #
         self.actionJoin = QtGui.QAction(self)
         iconJoin = QtGui.QIcon()
         iconJoin.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Join.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionJoin.setIcon(iconJoin)
         self.actionJoin.setObjectName("actionJoin")
         self.actionJoin.setText("Join")
+        self.actionJoin.setToolTip("Join two briefcase files")
+        self.actionJoin.setVisible(False)
+        #
         self.actionAddFiles = QtGui.QAction(self)
         iconAddFiles = QtGui.QIcon()
         iconAddFiles.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionAddFiles.setIcon(iconAddFiles)
         self.actionAddFiles.setObjectName("actionAddFiles")
         self.actionAddFiles.setText("Add files")
+        self.actionAddFiles.setToolTip("Put files inside the briefcase")
+        self.actionAddFiles.setVisible(False)
+        #
         self.actionExport = QtGui.QAction(self)
         iconExport = QtGui.QIcon()
         iconExport.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionExport.setIcon(iconExport)
         self.actionExport.setObjectName("actionExport")
-        self.actionExport.setText("Export")
-        self.actionProperties = QtGui.QAction(self)
+        self.actionExport.setText("Export all")
+        self.actionExport.setToolTip("Export all files in a folder")
+        self.actionExport.setVisible(False)
+        #
+        self.actionDBProperties = QtGui.QAction(self)
         iconProperties = QtGui.QIcon()
         iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionProperties.setIcon(iconProperties)
-        self.actionProperties.setObjectName("actionProperties")
-        self.actionProperties.setText("Properties")
+        self.actionDBProperties.setIcon(iconProperties)
+        self.actionDBProperties.setObjectName("actionDBProperties")
+        self.actionDBProperties.setText("Properties")
+        self.actionDBProperties.setToolTip("Briefcase properties")
+        self.actionDBProperties.setVisible(False)
+        #
         self.actionRefresh = QtGui.QAction(self)
         iconRefresh = QtGui.QIcon()
         iconRefresh.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionRefresh.setIcon(iconRefresh)
         self.actionRefresh.setObjectName("actionRefresh")
         self.actionRefresh.setText("Refresh")
+        self.actionRefresh.setVisible(False)
+        #
         self.actionHelp = QtGui.QAction(self)
         iconHelp = QtGui.QIcon()
         iconHelp.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionHelp.setIcon(iconHelp)
         self.actionHelp.setObjectName("actionHelp")
         self.actionHelp.setText("Help")
+        #
         self.actionAbout = QtGui.QAction(self)
         iconAbout = QtGui.QIcon()
         iconAbout.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Information.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -228,8 +247,8 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionAddFiles)
         self.actionExport.triggered.connect(self.on_export)
         toolBar.addAction(self.actionExport)
-        self.actionProperties.triggered.connect(self.on_db_properties)
-        toolBar.addAction(self.actionProperties)
+        self.actionDBProperties.triggered.connect(self.on_db_properties)
+        toolBar.addAction(self.actionDBProperties)
         self.actionRefresh.triggered.connect(self.on_refresh)
         toolBar.addAction(self.actionRefresh)
         self.actionHelp.triggered.connect(self.on_help)
@@ -380,6 +399,11 @@ class MainWindow(QtGui.QMainWindow):
         self.tabs[tab_name+'_bs'] = []                # Selected buttons.
         self.tabs[tab_name+'_c'] = scrollAreaContents # Contents.
         #
+        self.actionAddFiles.setVisible(True)
+        self.actionExport.setVisible(True)
+        self.actionDBProperties.setVisible(True)
+        self.actionRefresh.setVisible(True)
+        #
 
     def _close_tab(self, index):
         #
@@ -391,7 +415,14 @@ class MainWindow(QtGui.QMainWindow):
             del btn
         del self.tabs[tab_name+'_btns'] # Del buttons pointer.
         del self.tabs[tab_name+'_c']    # Del contents.
+        del self.tabs[tab_name+'_pb']   # Del Briefcase.
         del self.tabs[tab_name]         # Del tab.
+        #
+        if not self.tabs:
+            self.actionAddFiles.setVisible(False)
+            self.actionExport.setVisible(False)
+            self.actionDBProperties.setVisible(False)
+            self.actionRefresh.setVisible(False)
         #
 
     def _new_button(self, tab_name, file_name):
@@ -554,11 +585,11 @@ class MainWindow(QtGui.QMainWindow):
         if not prop['allLabels']:
             prop['allLabels'] = '-'
         QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % tab_name, '''
-            <br><b>numberOfFiles</b> : %(numberOfFiles)i
-            <br><b>dateCreated</b> : %(dateCreated)s
-            <br><b>userCreated</b> : %(userCreated)s
-            <br><b>allLabels</b> : %(allLabels)s
-            <br><b>versionCreated</b> : %(versionCreated)s
+            <br><b>Number of files</b> : %(numberOfFiles)i
+            <br><b>Date created</b> : %(dateCreated)s
+            <br><b>User created</b> : %(userCreated)s
+            <br><b>All labels</b> : %(allLabels)s
+            <br><b>Version created</b> : %(versionCreated)s
             <br>''' % prop)
         del tab_name
         #
@@ -653,18 +684,30 @@ class MainWindow(QtGui.QMainWindow):
         prop = self.tabs[tab_name+'_pb'].FileStatistics(fname=qtBS)
         if not prop['labels']:
             prop['labels'] = '-'
-        QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
-            <br><b>fileName</b> : %(fileName)s
-            <br><b>intern FileName</b> : %(internFileName)s
-            <br><b>first FileSize</b> : %(firstFileSize)i
-            <br><b>last FileSize</b> : %(lastFileSize)i
-            <br><b>largest Size</b> : %(biggestSize)i
-            <br><b>first FileDate</b> : %(firstFileDate)s
-            <br><b>last FileDate</b> : %(lastFileDate)s
-            <br><b>first FileUser</b> : %(firstFileUser)s
-            <br><b>last FileUser</b> : %(lastFileUser)s
-            <br><b>labels</b> : %(labels)s
-            <br><b>versions</b> : %(versions)i<br>''' % prop)
+        #
+        if prop['versions'] == 1:
+            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
+                <br><b>File Name</b> : %(fileName)s
+                <br><b>intern FileName</b> : %(internFileName)s
+                <br><b>FileSize</b> : %(lastFileSize)i
+                <br><b>FileDate</b> : %(lastFileDate)s
+                <br><b>FileUser</b> : %(lastFileUser)s
+                <br><b>labels</b> : %(labels)s
+                <br><b>versions</b> : %(versions)i<br>''' % prop)
+        else:
+            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
+                <br><b>File Name</b> : %(fileName)s
+                <br><b>intern FileName</b> : %(internFileName)s
+                <br><b>first FileSize</b> : %(firstFileSize)i
+                <br><b>last FileSize</b> : %(lastFileSize)i
+                <br><b>largest Size</b> : %(biggestSize)i
+                <br><b>first FileDate</b> : %(firstFileDate)s
+                <br><b>last FileDate</b> : %(lastFileDate)s
+                <br><b>first FileUser</b> : %(firstFileUser)s
+                <br><b>last FileUser</b> : %(lastFileUser)s
+                <br><b>labels</b> : %(labels)s
+                <br><b>versions</b> : %(versions)i<br>''' % prop)
+        #
         del tab_name, qtBS, prop
         #
 
