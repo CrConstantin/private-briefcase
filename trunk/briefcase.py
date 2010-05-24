@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r53'
+__version__ = 'r54'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -573,7 +573,7 @@ class Briefcase:
         del md4
 
         # Check file existence.
-        if self.c.execute('select file from _files_ where file = ?', [new_fname]).fetchone():
+        if self.c.execute('select file from _files_ where file = ?', [new_fname.lower()]).fetchone():
             self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
@@ -634,7 +634,7 @@ class Briefcase:
         del md4
 
         # Check file existence.
-        if not self.c.execute('select file from _files_ where file = ?', [fname]).fetchone():
+        if not self.c.execute('select file from _files_ where file = ?', [fname.lower()]).fetchone():
             self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
             return -1
 
@@ -752,6 +752,27 @@ class Briefcase:
         self._log(1, 'Get database info took %.4f sec.' % (clock()-ti))
         return {'numberOfFiles':numberOfFiles, 'dateCreated':dateCreated , 'userCreated':userCreated,
             'allLabels':allLabels, 'versionCreated':versionCreated}
+
+
+    def Cleanup(self):
+        '''
+        Deletes table _statistics_. \n\
+        Cleans the main database by copying its contents to a temporary database file and
+        reloading the original database file from the copy. \n\
+        This eliminates free pages, aligns table data to be contiguous, and otherwise
+        cleans up the database file structure. \n\
+        '''
+        ti = clock()
+
+        self.c.execute('drop table _statistics_') # Delete table _statistics_.
+        self.c.execute('create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, '
+            'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)')
+        # Rebuilding statistics.
+        for fname in self.c.execute('select file from _files_ order by file asc').fetchall():
+            self.FileStatistics(fname[0])
+
+        self.c.execute('VACUUM')
+        self._log(1, 'Cleanup took %.4f sec.' % (clock()-ti))
 
 
 #
