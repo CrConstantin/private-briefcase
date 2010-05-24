@@ -207,6 +207,15 @@ class MainWindow(QtGui.QMainWindow):
         self.actionDBProperties.setToolTip("Briefcase properties")
         self.actionDBProperties.setVisible(False)
         #
+        self.actionShowLog = QtGui.QAction(self)
+        iconProperties = QtGui.QIcon()
+        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Announce.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionShowLog.setIcon(iconProperties)
+        self.actionShowLog.setObjectName("actionShowLog")
+        self.actionShowLog.setText("Log")
+        self.actionShowLog.setToolTip("Show briefcase log")
+        self.actionShowLog.setVisible(False)
+        #
         self.actionRefresh = QtGui.QAction(self)
         iconRefresh = QtGui.QIcon()
         iconRefresh.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -249,6 +258,8 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionExport)
         self.actionDBProperties.triggered.connect(self.on_db_properties)
         toolBar.addAction(self.actionDBProperties)
+        self.actionShowLog.triggered.connect(self.on_show_log)
+        toolBar.addAction(self.actionShowLog)
         self.actionRefresh.triggered.connect(self.on_refresh)
         toolBar.addAction(self.actionRefresh)
         self.actionHelp.triggered.connect(self.on_help)
@@ -402,6 +413,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionAddFiles.setVisible(True)
         self.actionExport.setVisible(True)
         self.actionDBProperties.setVisible(True)
+        self.actionShowLog.setVisible(True)
         self.actionRefresh.setVisible(True)
         #
 
@@ -422,6 +434,7 @@ class MainWindow(QtGui.QMainWindow):
             self.actionAddFiles.setVisible(False)
             self.actionExport.setVisible(False)
             self.actionDBProperties.setVisible(False)
+            self.actionShowLog.setVisible(False)
             self.actionRefresh.setVisible(False)
         #
 
@@ -591,6 +604,36 @@ class MainWindow(QtGui.QMainWindow):
             <br><b>All labels</b> : %(allLabels)s
             <br><b>Version created</b> : %(versionCreated)s
             <br>''' % prop)
+        del tab_name
+        #
+
+    def on_show_log(self):
+        #
+        try : tab_name = str(self.tabWidget.currentWidget().objectName()) # Current tab.
+        except :
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Log',
+                '<br>Error! Must first <b>Create New</b> or <b>Open Briefcase</b>!<br>')
+            return
+        #
+        logs = self.tabs[tab_name+'_pb'].c.execute('select date, msg from _logs_').fetchall()
+        dlg = QtGui.QDialog(self)
+        dlg.setMinimumSize(QtCore.QSize(200, 600))
+        table = QtGui.QTableWidget(dlg)
+        table.setColumnCount(2)
+        table.setRowCount(len(logs))
+        table.setHorizontalHeaderItem(0, QtGui.QTableWidgetItem('Date'))
+        table.setHorizontalHeaderItem(1, QtGui.QTableWidgetItem('Message'))
+        table.setColumnWidth(0, 118)
+        #
+        for i in range(len(logs)):
+            table.setItem(i, 0, QtGui.QTableWidgetItem(logs[i][0]))
+            table.setItem(i, 1, QtGui.QTableWidgetItem(logs[i][1]))
+        #
+        layout = QtGui.QVBoxLayout(dlg)
+        layout.addWidget(table)
+        dlg.setLayout(layout)
+        dlg.exec_()
+        del dlg
         del tab_name
         #
 
