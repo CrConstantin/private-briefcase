@@ -27,9 +27,10 @@ QTabWidget::tab-bar {
     left: 7px;
 }
 QPushButton {
+    background-position: top center;
     border-style: outset;
     border: 1px solid #666;
-    border-radius: 3px;
+    border-radius: 2px;
     color: #001;
     font: 10px;
 }
@@ -162,6 +163,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionNew.setObjectName("actionNew")
         self.actionNew.setText("New")
         self.actionNew.setToolTip("Create new briefcase")
+        self.actionNew.setShortcut('Ctrl+N')
         #
         self.actionOpen = QtGui.QAction(self)
         iconOpen = QtGui.QIcon()
@@ -170,6 +172,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionOpen.setObjectName("actionOpen")
         self.actionOpen.setText("Open")
         self.actionOpen.setToolTip("Open existing briefcase")
+        self.actionOpen.setShortcut('Ctrl+O')
         #
         self.actionJoin = QtGui.QAction(self)
         iconJoin = QtGui.QIcon()
@@ -443,7 +446,7 @@ class MainWindow(QtGui.QMainWindow):
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        pushButton.setGeometry(self.calculate_x(), self.calculate_y(), 95, 60)
+        pushButton.setGeometry(self.calculate_x(), self.calculate_y(), 98, 60)
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
         pushButton.setStatusTip(file_name)
@@ -452,7 +455,8 @@ class MainWindow(QtGui.QMainWindow):
         else:
             fname = file_name
         pushButton.setText(fname)
-        pushButton.setStyleSheet('text-align: left bottom; padding: 4px;')
+        pushButton.setStyleSheet('background-image: url(Extensions/Default.png);'
+            'text-align: center bottom; padding: 4px;')
         # Connect events.
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
