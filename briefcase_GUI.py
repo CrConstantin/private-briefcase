@@ -30,7 +30,7 @@ QPushButton {
     background-position: top center;
     border-style: outset;
     border: 1px solid #666;
-    border-radius: 2px;
+    border-radius: 3px;
     color: #001;
     font: 10px;
 }
@@ -162,7 +162,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionNew.setIcon(iconNew)
         self.actionNew.setObjectName("actionNew")
         self.actionNew.setText("New")
-        self.actionNew.setToolTip("Create new briefcase")
+        self.actionNew.setToolTip("Create new briefcase (Ctrl+N)")
         self.actionNew.setShortcut('Ctrl+N')
         #
         self.actionOpen = QtGui.QAction(self)
@@ -171,7 +171,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionOpen.setIcon(iconOpen)
         self.actionOpen.setObjectName("actionOpen")
         self.actionOpen.setText("Open")
-        self.actionOpen.setToolTip("Open existing briefcase")
+        self.actionOpen.setToolTip("Open existing briefcase (Ctrl+O)")
         self.actionOpen.setShortcut('Ctrl+O')
         #
         self.actionJoin = QtGui.QAction(self)
@@ -189,8 +189,9 @@ class MainWindow(QtGui.QMainWindow):
         self.actionAddFiles.setIcon(iconAddFiles)
         self.actionAddFiles.setObjectName("actionAddFiles")
         self.actionAddFiles.setText("Add files")
-        self.actionAddFiles.setToolTip("Put files inside the briefcase")
+        self.actionAddFiles.setToolTip("Put files inside the briefcase (Ctrl+F)")
         self.actionAddFiles.setVisible(False)
+        self.actionAddFiles.setShortcut('Ctrl+F')
         #
         self.actionExport = QtGui.QAction(self)
         iconExport = QtGui.QIcon()
@@ -198,8 +199,9 @@ class MainWindow(QtGui.QMainWindow):
         self.actionExport.setIcon(iconExport)
         self.actionExport.setObjectName("actionExport")
         self.actionExport.setText("Export all")
-        self.actionExport.setToolTip("Export all files in a folder")
+        self.actionExport.setToolTip("Export all files in a folder (Ctrl+E)")
         self.actionExport.setVisible(False)
+        self.actionExport.setShortcut('Ctrl+E')
         #
         self.actionDBProperties = QtGui.QAction(self)
         iconProperties = QtGui.QIcon()
@@ -207,8 +209,9 @@ class MainWindow(QtGui.QMainWindow):
         self.actionDBProperties.setIcon(iconProperties)
         self.actionDBProperties.setObjectName("actionDBProperties")
         self.actionDBProperties.setText("Properties")
-        self.actionDBProperties.setToolTip("Briefcase properties")
+        self.actionDBProperties.setToolTip("Briefcase details (Ctrl+D)")
         self.actionDBProperties.setVisible(False)
+        self.actionDBProperties.setShortcut('Ctrl+D')
         #
         self.actionShowLog = QtGui.QAction(self)
         iconProperties = QtGui.QIcon()
@@ -216,8 +219,9 @@ class MainWindow(QtGui.QMainWindow):
         self.actionShowLog.setIcon(iconProperties)
         self.actionShowLog.setObjectName("actionShowLog")
         self.actionShowLog.setText("Log")
-        self.actionShowLog.setToolTip("Show briefcase log")
+        self.actionShowLog.setToolTip("Show briefcase log (Ctrl+L)")
         self.actionShowLog.setVisible(False)
+        self.actionShowLog.setShortcut('Ctrl+L')
         #
         self.actionRefresh = QtGui.QAction(self)
         iconRefresh = QtGui.QIcon()
@@ -225,7 +229,9 @@ class MainWindow(QtGui.QMainWindow):
         self.actionRefresh.setIcon(iconRefresh)
         self.actionRefresh.setObjectName("actionRefresh")
         self.actionRefresh.setText("Refresh")
+        self.actionRefresh.setToolTip("Re-Arange icons (Ctrl+R)")
         self.actionRefresh.setVisible(False)
+        self.actionRefresh.setShortcut('Ctrl+R')
         #
         self.actionHelp = QtGui.QAction(self)
         iconHelp = QtGui.QIcon()
@@ -233,6 +239,8 @@ class MainWindow(QtGui.QMainWindow):
         self.actionHelp.setIcon(iconHelp)
         self.actionHelp.setObjectName("actionHelp")
         self.actionHelp.setText("Help")
+        self.actionHelp.setToolTip("View help (Ctrl+H)")
+        self.actionHelp.setShortcut('Ctrl+H')
         #
         self.actionAbout = QtGui.QAction(self)
         iconAbout = QtGui.QIcon()
