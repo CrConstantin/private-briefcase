@@ -49,15 +49,14 @@ class CustomDialog(QtGui.QDialog):
         self.action = action
         #
         self.resize(300, 100)
-        self.setMinimumSize(QtCore.QSize(300, 100))
-        self.setMaximumSize(QtCore.QSize(300, 100))
+        self.setMinimumSize(QtCore.QSize(280, 90))
+        self.setMaximumSize(QtCore.QSize(320, 110))
         self.setWindowTitle(title)
         self.setWhatsThis(whatsthis)
         #
         # Buttons.
-        self.browse = QtGui.QPushButton(self)
+        self.browse = QtGui.QPushButton('...', self)
         self.browse.setMinimumSize(QtCore.QSize(1, 20))
-        self.browse.setText('...')
         self.dir = QtGui.QLineEdit(self)
         self.dir.setFocus(0)
         self.dir.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
@@ -66,16 +65,13 @@ class CustomDialog(QtGui.QDialog):
         self.pwd.setEchoMode(QtGui.QLineEdit.Password)
         self.pwd.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.pwd.setMinimumSize(QtCore.QSize(1, 22))
-        self.btn = QtGui.QPushButton(self)
+        self.btn = QtGui.QPushButton(action, self)
         self.btn.setMinimumSize(QtCore.QSize(1, 20))
-        self.btn.setText(action)
         self.btn.setDefault(True)
         #
         # Labels.
-        self.browseL = QtGui.QLabel(self)
-        self.browseL.setText('File')
-        self.pwdL = QtGui.QLabel(self)
-        self.pwdL.setText('Password')
+        self.browseL = QtGui.QLabel('File', self)
+        self.pwdL = QtGui.QLabel('Password', self)
         #
         self.dir.textChanged.connect(self.Update)
         self.browse.clicked.connect(self.Browse)
@@ -136,8 +132,8 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Set central widget.
         self.centralwidget = QtGui.QWidget(self)
-        self.centralwidget.setStyleSheet(WStyle)
         self.centralwidget.setObjectName('centralWidget')
+        self.centralwidget.setStyleSheet(WStyle)
         self.setCentralWidget(self.centralwidget)
         #
         # Set status bar.
@@ -147,107 +143,59 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Set tab widget.
         self.tabWidget = QtGui.QTabWidget(self.centralwidget)
+        self.tabWidget.setObjectName('tabWidget')
         self.tabWidget.setGeometry(QtCore.QRect(10, 10, 780, 500))
         self.tabWidget.setTabShape(QtGui.QTabWidget.Triangular)
         self.tabWidget.setTabsClosable(True)
         self.tabWidget.setMovable(True)
-        self.tabWidget.setObjectName('tabWidget')
         self.tabWidget.setCurrentIndex(0)
         self.tabWidget.tabCloseRequested.connect(self._close_tab)
         #
         # Setup actions.
-        self.actionNew = QtGui.QAction(self)
-        iconNew = QtGui.QIcon()
-        iconNew.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-New.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionNew.setIcon(iconNew)
-        self.actionNew.setObjectName("actionNew")
-        self.actionNew.setText("New")
+        self.actionNew = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-New.png')), 'New', self)
         self.actionNew.setToolTip("Create new briefcase (Ctrl+N)")
         self.actionNew.setShortcut('Ctrl+N')
         #
-        self.actionOpen = QtGui.QAction(self)
-        iconOpen = QtGui.QIcon()
-        iconOpen.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Open.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionOpen.setIcon(iconOpen)
-        self.actionOpen.setObjectName("actionOpen")
-        self.actionOpen.setText("Open")
+        self.actionOpen = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Open.png')), 'Open', self)
         self.actionOpen.setToolTip("Open existing briefcase (Ctrl+O)")
         self.actionOpen.setShortcut('Ctrl+O')
         #
-        self.actionJoin = QtGui.QAction(self)
-        iconJoin = QtGui.QIcon()
-        iconJoin.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Join.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionJoin.setIcon(iconJoin)
-        self.actionJoin.setObjectName("actionJoin")
-        self.actionJoin.setText("Join")
+        ''' # Hidden for now !
+        self.actionJoin = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Join.png')), 'Join', self)
         self.actionJoin.setToolTip("Join two briefcase files")
         self.actionJoin.setVisible(False)
+        self.actionJoin.setShortcut('Ctrl+J')
+        '''
         #
-        self.actionAddFiles = QtGui.QAction(self)
-        iconAddFiles = QtGui.QIcon()
-        iconAddFiles.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Add.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAddFiles.setIcon(iconAddFiles)
-        self.actionAddFiles.setObjectName("actionAddFiles")
-        self.actionAddFiles.setText("Add files")
+        self.actionAddFiles = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Add.png')), 'Add Files', self)
         self.actionAddFiles.setToolTip("Put files inside the briefcase (Ctrl+F)")
         self.actionAddFiles.setVisible(False)
         self.actionAddFiles.setShortcut('Ctrl+F')
         #
-        self.actionExport = QtGui.QAction(self)
-        iconExport = QtGui.QIcon()
-        iconExport.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Export.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionExport.setIcon(iconExport)
-        self.actionExport.setObjectName("actionExport")
-        self.actionExport.setText("Export all")
+        self.actionExport = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Export.png')), 'Export All', self)
         self.actionExport.setToolTip("Export all files in a folder (Ctrl+E)")
         self.actionExport.setVisible(False)
         self.actionExport.setShortcut('Ctrl+E')
         #
-        self.actionDBProperties = QtGui.QAction(self)
-        iconProperties = QtGui.QIcon()
-        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionDBProperties.setIcon(iconProperties)
-        self.actionDBProperties.setObjectName("actionDBProperties")
-        self.actionDBProperties.setText("Properties")
+        self.actionDBProperties = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Properties.png')), 'Properties', self)
         self.actionDBProperties.setToolTip("Briefcase details (Ctrl+D)")
         self.actionDBProperties.setVisible(False)
         self.actionDBProperties.setShortcut('Ctrl+D')
         #
-        self.actionShowLog = QtGui.QAction(self)
-        iconProperties = QtGui.QIcon()
-        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Announce.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionShowLog.setIcon(iconProperties)
-        self.actionShowLog.setObjectName("actionShowLog")
-        self.actionShowLog.setText("Log")
+        self.actionShowLog = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Announce.png')), 'Log', self)
         self.actionShowLog.setToolTip("Show briefcase log (Ctrl+L)")
         self.actionShowLog.setVisible(False)
         self.actionShowLog.setShortcut('Ctrl+L')
         #
-        self.actionRefresh = QtGui.QAction(self)
-        iconRefresh = QtGui.QIcon()
-        iconRefresh.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Refresh.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRefresh.setIcon(iconRefresh)
-        self.actionRefresh.setObjectName("actionRefresh")
-        self.actionRefresh.setText("Refresh")
+        self.actionRefresh = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Refresh.png')), 'Refresh', self)
         self.actionRefresh.setToolTip("Re-Arange icons (Ctrl+R)")
         self.actionRefresh.setVisible(False)
         self.actionRefresh.setShortcut('Ctrl+R')
         #
-        self.actionHelp = QtGui.QAction(self)
-        iconHelp = QtGui.QIcon()
-        iconHelp.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Help.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionHelp.setIcon(iconHelp)
-        self.actionHelp.setObjectName("actionHelp")
-        self.actionHelp.setText("Help")
+        self.actionHelp = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Help.png')), 'Help', self)
         self.actionHelp.setToolTip("View help (Ctrl+H)")
         self.actionHelp.setShortcut('Ctrl+H')
-        #
-        self.actionAbout = QtGui.QAction(self)
-        iconAbout = QtGui.QIcon()
-        iconAbout.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Information.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionAbout.setIcon(iconAbout)
-        self.actionAbout.setObjectName("actionAbout")
-        self.actionAbout.setText("About")
+        self.actionAbout = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Information.png')), 'About', self)
         #
         # Tool bar.
         toolBar = QtGui.QToolBar(self)
@@ -261,8 +209,8 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionNew)
         self.actionOpen.triggered.connect(self.on_open)
         toolBar.addAction(self.actionOpen)
-        self.actionJoin.triggered.connect(self.on_join)
-        toolBar.addAction(self.actionJoin)
+        #self.actionJoin.triggered.connect(self.on_join)
+        #toolBar.addAction(self.actionJoin)
         self.actionAddFiles.triggered.connect(self.on_add)
         toolBar.addAction(self.actionAddFiles)
         self.actionExport.triggered.connect(self.on_export)
@@ -279,42 +227,12 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionAbout)
         #
         # Button actions.
-        self.actionView = QtGui.QAction(self)
-        iconView = QtGui.QIcon()
-        iconView.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-View.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionView.setIcon(iconView)
-        self.actionView.setObjectName("actionView")
-        self.actionView.setText("View")
-        self.actionEdit = QtGui.QAction(self)
-        iconEdit = QtGui.QIcon()
-        iconEdit.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Edit.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionEdit.setIcon(iconEdit)
-        self.actionEdit.setObjectName("actionEdit")
-        self.actionEdit.setText("Edit")
-        self.actionCopy = QtGui.QAction(self)
-        iconCopy = QtGui.QIcon()
-        iconCopy.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Copy.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionCopy.setIcon(iconCopy)
-        self.actionCopy.setObjectName("actionCopy")
-        self.actionCopy.setText("Copy")
-        self.actionDelete = QtGui.QAction(self)
-        iconDelete = QtGui.QIcon()
-        iconDelete.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Delete.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionDelete.setIcon(iconDelete)
-        self.actionDelete.setObjectName("actionDelete")
-        self.actionDelete.setText("Delete")
-        self.actionRename = QtGui.QAction(self)
-        iconRename = QtGui.QIcon()
-        iconRename.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Rename.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionRename.setIcon(iconRename)
-        self.actionRename.setObjectName("actionRename")
-        self.actionRename.setText("Rename")
-        self.actionProperties = QtGui.QAction(self)
-        iconProperties = QtGui.QIcon()
-        iconProperties.addPixmap(QtGui.QPixmap(":/root/Symbols/Symbol-Properties.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.actionProperties.setIcon(iconProperties)
-        self.actionProperties.setObjectName("actionProperties")
-        self.actionProperties.setText("Properties")
+        self.actionView = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-View.png')), 'View', self)
+        self.actionEdit = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Edit.png')), 'Edit', self)
+        self.actionCopy = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Copy.png')), 'Copy', self)
+        self.actionDelete = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Delete.png')), 'Delete', self)
+        self.actionRename = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Rename.png')), 'Rename', self)
+        self.actionProperties = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Properties.png')), 'Properties', self)
         #
         # Setup Menu + add Actions.
         self.qtMenu = QtGui.QMenu()
@@ -430,11 +348,11 @@ class MainWindow(QtGui.QMainWindow):
 
     def _close_tab(self, index):
         #
-        tab_name = str(self.tabWidget.tabText(index))
+        tab_name = str(self.tabWidget.tabText(index)) # Tab name based on index.
         self.tabWidget.removeTab(index)
         #
-        del self.tabs[tab_name+'_bs']  # Del selected buttons.
-        for btn in self.tabs[tab_name+'_btns']: # Del each buttons.
+        del self.tabs[tab_name+'_bs']   # Del selected buttons.
+        for btn in self.tabs[tab_name+'_btns']: # Del all buttons.
             del btn
         del self.tabs[tab_name+'_btns'] # Del buttons pointer.
         del self.tabs[tab_name+'_c']    # Del contents.
@@ -453,7 +371,6 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Setup button.
         pushButton = QtGui.QPushButton(self.tabs[tab_name+'_c'])
-        pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         pushButton.setGeometry(self.calculate_x(), self.calculate_y(), 98, 60)
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name)
@@ -465,6 +382,7 @@ class MainWindow(QtGui.QMainWindow):
         pushButton.setText(fname)
         pushButton.setStyleSheet('background-image: url(Extensions/Default.png);'
             'text-align: center bottom; padding: 4px;')
+        pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Connect events.
         pushButton.clicked.connect(self.double_click)
         pushButton.customContextMenuRequested.connect(self.right_click)
