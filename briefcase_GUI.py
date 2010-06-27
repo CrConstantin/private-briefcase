@@ -209,61 +209,12 @@ class MainWindow(QtGui.QMainWindow):
         self.actionAbout.triggered.connect(self.on_about)
         toolBar.addAction(self.actionAbout)
         #
-        # Button actions.
-        self.actionView = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-View.png')), 'View', self)
-        self.actionEdit = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Edit.png')), 'Edit', self)
-        self.actionCopy = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Copy.png')), 'Copy', self)
-        self.actionDelete = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Delete.png')), 'Delete', self)
-        self.actionRename = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Rename.png')), 'Rename', self)
-        self.actionProperties = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Properties.png')), 'Properties', self)
-        #
-        # Setup Menu + add Actions.
-        self.qtMenu = QtGui.QMenu()
-        self.actionView.triggered.connect(self.on_view)
-        self.qtMenu.addAction(self.actionView)
-        self.actionEdit.triggered.connect(self.on_edit)
-        self.qtMenu.addAction(self.actionEdit)
-        self.actionCopy.triggered.connect(self.on_copy)
-        self.qtMenu.addAction(self.actionCopy)
-        self.actionDelete.triggered.connect(self.on_delete)
-        self.qtMenu.addAction(self.actionDelete)
-        self.actionRename.triggered.connect(self.on_rename)
-        self.qtMenu.addAction(self.actionRename)
-        self.actionProperties.triggered.connect(self.on_properties)
-        self.qtMenu.addAction(self.actionProperties)
-        #
-        # Setup double click timer.
-        self.dblClickTimer = QtCore.QTimer()
-        self.dblClickTimer.setInterval(500)
-        self.dblClickTimer.setSingleShot(True)
-        #
         # Default file for command line access.
         try:
             self.default_file = sys.argv[1]
             self.on_open()
         except:
             self.default_file = ''
-        #
-
-    def double_click(self):
-        # If after receiving the first click, the timer isn't running, start the timer and return.
-        if not self.dblClickTimer.isActive():
-            self.dblClickTimer.start()
-            return
-        # If timer is running and hasn't timed out, the second click occured within timer interval.
-        if self.dblClickTimer.isActive():
-            print( 'Triggered Double-Click on item!' )
-            self.on_view()
-            self.dblClickTimer.stop() # Stop timer so next click can start it again.
-            return
-        #
-
-    def right_click(self):
-        #
-        vPos = self.cursor().pos()
-        vCurrent = self.tabWidget.currentWidget()
-        vCurrent.buttons_selected = str(self.childAt(self.mapFromGlobal(vPos)).objectName()) # Selected button.
-        self.qtMenu.exec_(vPos) # Execute menu.
         #
 
     def _close_tab(self, index):
@@ -294,6 +245,11 @@ class MainWindow(QtGui.QMainWindow):
         new_tab = CustomTab(self, tab_name, dir, pwd)
         self.tabWidget.addTab(new_tab, tab_name) # Inject THIS into parent tab widget.
         self.tabWidget.setCurrentWidget(new_tab) # Must enable new tab.
+        #
+        self.actionAddFiles.setVisible(True)
+        self.actionExport.setVisible(True)
+        self.actionDBProperties.setVisible(True)
+        self.actionShowLog.setVisible(True)
         #
 
     def on_open(self):
@@ -326,6 +282,11 @@ class MainWindow(QtGui.QMainWindow):
         self.tabWidget.addTab(new_tab, tab_name) # Inject THIS into parent tab widget.
         self.tabWidget.setCurrentWidget(new_tab) # Must enable new tab.
         new_tab.fRefresh()
+        #
+        self.actionAddFiles.setVisible(True)
+        self.actionExport.setVisible(True)
+        self.actionDBProperties.setVisible(True)
+        self.actionShowLog.setVisible(True)
         #
 
     def on_join(self):
@@ -423,112 +384,6 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.QMessageBox.about(self.centralwidget, 'About Private Briefcase',
             '<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>'
             '<b>Website</b> : http://private-briefcase.googlecode.com<br>')
-        #
-
-    def on_view(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        # If caller is an action.
-        if type(self.sender()) == type(QtGui.QPushButton()):
-            vCurrent.b.ExportFile(str(self.sender().objectName()), execute=True)
-        # If caller is a button.
-        else:
-            vCurrent.b.ExportFile(vCurrent.buttons_selected, execute=True)
-        del vCurrent
-        #
-
-    def on_edit(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        vCurrent.b.ExportFile(vCurrent.buttons_selected, execute=True)
-        del vCurrent
-        #
-
-    def on_copy(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        qtBS = vCurrent.buttons_selected          # Selected button.
-        qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
-            'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
-        if qtMsg == 0: # Clicked yes.
-            ret = vCurrent.b.CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
-            if ret == 0: # If Briefcase returns 0, create new button.
-                vCurrent._create_button('copy of '+qtBS)
-                vCurrent.fRefresh()
-        del vCurrent, qtBS, qtMsg
-        #
-
-    def on_delete(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        qtBS = vCurrent.buttons_selected          # Selected button.
-        qtMsg = QtGui.QMessageBox.warning(self.centralwidget, 'Delete file ? ...',
-            'Are you sure you want to delete "%s" ?' % qtBS, 'Yes', 'No')
-        if qtMsg == 0: # Clicked yes.
-            ret = vCurrent.b.DelFile(fname=qtBS, version=0)
-            if ret == 0: # If Briefcase returns 0, delete the button.
-                vCurrent.buttons[qtBS].close()
-                del vCurrent.buttons[qtBS]
-                vCurrent.fRefresh()
-        del vCurrent, qtBS, qtMsg
-        #
-
-    def on_rename(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        qtBS = vCurrent.buttons_selected          # Selected button.
-        qtTxt, qtMsg = QtGui.QInputDialog.getText(self.centralwidget, 'Rename file ? ...',
-            'New name :', QtGui.QLineEdit.Normal, qtBS)
-        if qtMsg and str(qtTxt): # Clicked yes and text exists.
-            ret = vCurrent.b.RenFile(fname=qtBS, new_fname=str(qtTxt))
-            if ret == 0: # If Briefcase returns 0, rename the button.
-                vCurrent.buttons[qtBS].setObjectName(qtTxt)
-                vCurrent.buttons[qtBS].setStatusTip(qtTxt)
-                #
-                if len(qtTxt)>12:
-                    fname = qtTxt[:12]+' (...)'
-                else:
-                    fname = qtTxt
-                vCurrent.buttons[qtBS].setText(fname)
-                # Pass the pointer to the new name.
-                vCurrent.buttons[str(qtTxt)] = vCurrent.buttons[qtBS]
-                del vCurrent.buttons[qtBS]
-                vCurrent.fRefresh()
-        del vCurrent, qtBS, qtTxt, qtMsg
-        #
-
-    def on_properties(self):
-        #
-        vCurrent = self.tabWidget.currentWidget() # Current tab.
-        qtBS = vCurrent.buttons_selected          # Selected button.
-        prop = vCurrent.b.FileStatistics(fname=qtBS)
-        if not prop['labels']:
-            prop['labels'] = '-'
-        #
-        if prop['versions'] == 1:
-            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
-                <br><b>File Name</b> : %(fileName)s
-                <br><b>intern FileName</b> : %(internFileName)s
-                <br><b>FileSize</b> : %(lastFileSize)i
-                <br><b>FileDate</b> : %(lastFileDate)s
-                <br><b>FileUser</b> : %(lastFileUser)s
-                <br><b>labels</b> : %(labels)s
-                <br><b>versions</b> : %(versions)i<br>''' % prop)
-        else:
-            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
-                <br><b>File Name</b> : %(fileName)s
-                <br><b>intern FileName</b> : %(internFileName)s
-                <br><b>first FileSize</b> : %(firstFileSize)i
-                <br><b>last FileSize</b> : %(lastFileSize)i
-                <br><b>largest Size</b> : %(biggestSize)i
-                <br><b>first FileDate</b> : %(firstFileDate)s
-                <br><b>last FileDate</b> : %(lastFileDate)s
-                <br><b>first FileUser</b> : %(firstFileUser)s
-                <br><b>last FileUser</b> : %(lastFileUser)s
-                <br><b>labels</b> : %(labels)s
-                <br><b>versions</b> : %(versions)i<br>''' % prop)
-        #
-        del vCurrent, qtBS, prop
         #
 
 
