@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r57'
+__version__ = 'r59'
 __all__ = ['Briefcase', '__version__']
 
 
