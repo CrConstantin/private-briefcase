@@ -16,18 +16,6 @@ from briefcase_GUI_tab import CustomTab
 from PyQt4 import QtCore, QtGui
 
 
-WStyle = '''
-QTabWidget::pane {
-    border-style: outset;
-    border: 1px solid #666;
-    border-radius: 10px;
-}
-QTabWidget::tab-bar {
-    left: 7px;
-}
-'''
-
-
 class CustomDialog(QtGui.QDialog):
 
     def __init__(self, parent, title, whatsthis, action):
@@ -44,9 +32,9 @@ class CustomDialog(QtGui.QDialog):
         #
         # Buttons.
         self.browse = QtGui.QPushButton('...', self)
-        self.browse.setMinimumSize(QtCore.QSize(1, 20))
+        self.browse.setMaximumSize(QtCore.QSize(20, 20))
         self.dir = QtGui.QLineEdit(self)
-        self.dir.setMinimumSize(QtCore.QSize(1, 22))
+        self.dir.setMinimumSize(QtCore.QSize(20, 5))
         self.dir.setFocus(0)
         #
         self.pwd = QtGui.QLineEdit(self)
@@ -107,13 +95,10 @@ class MainWindow(QtGui.QMainWindow):
         #
         super(MainWindow, self).__init__(None)
         #
-        global WStyle
-        self.tabs = {}
-        #
         # Some settings.
         self.resize(800, 600)
-        self.setMinimumSize(QtCore.QSize(800, 600))
-        self.setMaximumSize(QtCore.QSize(800, 600))
+        #self.setMinimumSize(QtCore.QSize(800, 600))
+        #self.setMaximumSize(QtCore.QSize(800, 600))
         QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('CleanLooks'))
         QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
         self.setObjectName('MainWindow')
@@ -123,8 +108,10 @@ class MainWindow(QtGui.QMainWindow):
         # Set central widget.
         self.centralwidget = QtGui.QWidget(self)
         self.centralwidget.setObjectName('centralWidget')
-        self.centralwidget.setStyleSheet(WStyle)
         self.setCentralWidget(self.centralwidget)
+        #
+        # Set central layout.
+        mainLayout = QtGui.QVBoxLayout(self.centralwidget)
         #
         # Set status bar.
         statusbar = QtGui.QStatusBar(self)
@@ -134,12 +121,12 @@ class MainWindow(QtGui.QMainWindow):
         # Set tab widget.
         self.tabWidget = QtGui.QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName('tabWidget')
-        self.tabWidget.setGeometry(QtCore.QRect(10, 10, 780, 500))
         self.tabWidget.setTabShape(QtGui.QTabWidget.Triangular)
         self.tabWidget.setTabsClosable(True)
         self.tabWidget.setMovable(True)
         self.tabWidget.setCurrentIndex(0)
         self.tabWidget.tabCloseRequested.connect(self._close_tab)
+        mainLayout.addWidget(self.tabWidget)
         #
         # Setup actions.
         self.actionNew = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-New.png')), 'New', self)
@@ -194,7 +181,7 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionNew)
         self.actionOpen.triggered.connect(self.on_open)
         toolBar.addAction(self.actionOpen)
-        #self.actionJoin.triggered.connect(self.on_join)
+        #self.actionJoin.triggered.connect(self.on_join) # Hidden for now.
         #toolBar.addAction(self.actionJoin)
         self.actionAddFiles.triggered.connect(self.on_add)
         toolBar.addAction(self.actionAddFiles)
@@ -210,18 +197,30 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionAbout)
         #
         # Default file for command line access.
-        try:
-            self.default_file = sys.argv[1]
+        default_file = sys.argv[1:2]
+        #
+        if default_file:
+            self.default_file = default_file[0]
             self.on_open()
-        except:
+        else:
             self.default_file = ''
+        #
+
+    def closeEvent(self, event):
+        #
+        for index in range(self.tabWidget.count()):
+            vCurrent = self.tabWidget.widget(index)
+            vCurrent.close() # Release resources.
+        #
+        self.close()
         #
 
     def _close_tab(self, index):
         #
-        vCurrent = self.tabWidget.currentWidget()
+        vCurrent = self.tabWidget.widget(index)
         self.tabWidget.removeTab(index) # Remove from tab widget.
-        vCurrent.__del__() # Release resources.
+        vCurrent.close() # Release resources.
+        del vCurrent     # Del pointer.
         #
         if not self.tabWidget.count():
             self.actionAddFiles.setVisible(False)
@@ -243,7 +242,7 @@ class MainWindow(QtGui.QMainWindow):
         #
         tab_name = os.path.split(dir.title())[1]
         new_tab = CustomTab(self, tab_name, dir, pwd)
-        self.tabWidget.addTab(new_tab, tab_name) # Inject THIS into parent tab widget.
+        self.tabWidget.addTab(new_tab, tab_name) # Add tab to tab widget.
         self.tabWidget.setCurrentWidget(new_tab) # Must enable new tab.
         #
         self.actionAddFiles.setVisible(True)
@@ -279,7 +278,7 @@ class MainWindow(QtGui.QMainWindow):
             return
         #
         new_tab = CustomTab(self, tab_name, dir, pwd)
-        self.tabWidget.addTab(new_tab, tab_name) # Inject THIS into parent tab widget.
+        self.tabWidget.addTab(new_tab, tab_name) # Add tab to tab widget.
         self.tabWidget.setCurrentWidget(new_tab) # Must enable new tab.
         new_tab.fRefresh()
         #
@@ -309,11 +308,9 @@ class MainWindow(QtGui.QMainWindow):
         dlg.exec_()
         # Selected files are separated by ";" so must be exploded.
         dir = str(dlg.dir.text()).split(';')
-        # If not password was selected, default password must be used, so pwd -> 1.
         pwd = str(dlg.pwd.text())
-        if not pwd: pwd = 1
-        # Save labels, transformed into python string.
-        lbl = str(dlg.lbl.text())
+        if not pwd: pwd = 1 # If password is null, use database default value.
+        lbl = str(dlg.lbl.text()) # Labels.
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
         #
@@ -354,13 +351,14 @@ class MainWindow(QtGui.QMainWindow):
         #
         logs = self.tabWidget.currentWidget().b.c.execute('select date, msg from _logs_').fetchall()
         dlg = QtGui.QDialog(self)
-        dlg.setMinimumSize(QtCore.QSize(200, 600))
+        dlg.setMinimumSize(QtCore.QSize(480, 600))
         table = QtGui.QTableWidget(dlg)
         table.setColumnCount(2)
         table.setRowCount(len(logs))
         table.setHorizontalHeaderItem(0, QtGui.QTableWidgetItem('Date'))
         table.setHorizontalHeaderItem(1, QtGui.QTableWidgetItem('Message'))
-        table.setColumnWidth(0, 118)
+        table.setColumnWidth(0, 117)
+        table.setColumnWidth(1, 280)
         #
         for i in range(len(logs)):
             table.setItem(i, 0, QtGui.QTableWidgetItem(logs[i][0]))

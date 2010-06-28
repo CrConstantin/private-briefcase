@@ -9,12 +9,15 @@
 
 # Standard libraries.
 import os, sys
+import glob
+import shutil
 
 # External dependency.
 from briefcase import *
 from PyQt4 import QtCore, QtGui
+from Crypto.Hash import MD4
 
-BUTTON_W = 100
+BUTTON_W = 98
 BUTTON_H = 64
 
 
@@ -26,6 +29,7 @@ class CustomTab(QtGui.QScrollArea):
     def __init__(self, parent, tab_name, database, password):
         #
         super(CustomTab, self).__init__(parent)
+        self.vWidth = parent.width() - 24
         #
         # Object name is sometimes used.
         self.setObjectName(tab_name)
@@ -73,13 +77,18 @@ class CustomTab(QtGui.QScrollArea):
             self._create_button(file_name)
         #
 
-    def __del__(self):
-        #
-        print('Closing custom tab.')
+    def closeEvent(self, event):
         #
         del self.buttons
         del self.buttons_selected
         del self.b
+        #
+        self.close()
+        #
+
+    def resizeEvent(self, event):
+        #
+        self.fRefresh()
         #
 
     def _create_button(self, file_name):
@@ -89,35 +98,38 @@ class CustomTab(QtGui.QScrollArea):
         '''
         #
         pushButton = QtGui.QPushButton() # Parent None.
+        pushButton.setMinimumSize(QtCore.QSize(BUTTON_W, BUTTON_H))
+        pushButton.setMaximumSize(QtCore.QSize(BUTTON_W, BUTTON_H))
         pushButton.resize(QtCore.QSize(BUTTON_W, BUTTON_H))
         pushButton.setFlat(True)
         pushButton.setObjectName(file_name) # Full file name.
         pushButton.setStatusTip(file_name)
-        if len(file_name)>12:
-            fname = file_name[:12]+' (...)'
+        if len(file_name) > 12:
+            fname = file_name[:12] + ' (...)'
         else:
             fname = file_name
         pushButton.setText(fname) # Short file name.
         # Style sheet.
         pushButton.setStyleSheet('''
         QPushButton {
-            background-image: url(Extensions/Default.png);'
-            background-position: top center;
             border-style: outset;
             border: 1px solid #666;
-            border-radius: 3px;
-            padding: 4px;
+            border-radius: 5px;
+            padding: 2px;
+            margin: 5px;
             text-align: center bottom;
             color: #001;
-            font: 10px; }
+            font: 10px;
+            /* background-image: url(Extensions/Default.png);'
+            background-position: top center; */
+            }
         QPushButton:pressed { border-style: inset; }''')
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Connect events.
-        pushButton.clicked.connect(self.parent.double_click)
-        pushButton.customContextMenuRequested.connect(self.parent.right_click)
+        pushButton.clicked.connect(self.fDoubleClick)
+        pushButton.customContextMenuRequested.connect(self.fRightClick)
         # Add button to dictionary.
         self.buttons[file_name] = pushButton
-        pushButton.show()
         #
 
     def fRefresh(self):
@@ -126,31 +138,30 @@ class CustomTab(QtGui.QScrollArea):
         This function is used when opening, adding, renaming or deleting buttons.
         '''
         #
-        vButtonsW = (self.width()-4) // BUTTON_W
+        self.vWidth = self.width()
         vRow = 1
-        vCol = 1
+        vCol = 0
         #
         for vButton in sorted( self.buttons, key=lambda k: k.lower() ):
-            # Add button in layout.
-            self.mainLayout.addWidget(self.buttons[vButton], vRow, vCol)
             # If current column is bigger than number of buttons per line.
-            if vCol >= vButtonsW:
+            if vCol >= self.vWidth // (BUTTON_W + 5):
                 # Go to next line.
                 vRow += 1
                 vCol = 1
             else:
                 vCol += 1
+            # Add button in layout.
+            self.mainLayout.addWidget(self.buttons[vButton], vRow, vCol, 1, 1)
         #
         if vRow == 1:
-            self.scrollAreaContents.setMinimumSize(QtCore.QSize(vCol*(BUTTON_W+2), BUTTON_H+2))
-            self.scrollAreaContents.setMaximumSize(QtCore.QSize(vCol*(BUTTON_W+2), BUTTON_H+2))
+            self.scrollAreaContents.setMinimumSize(vCol*BUTTON_W, BUTTON_H+10)
+            self.scrollAreaContents.resize(vCol*BUTTON_W, BUTTON_H+10)
         else:
-            self.scrollAreaContents.setMinimumSize(QtCore.QSize(vButtonsW*(BUTTON_W+3), vRow*(BUTTON_H+2)))
+            self.scrollAreaContents.setMinimumSize(self.vWidth-20, vRow*(BUTTON_H+10))
+            self.scrollAreaContents.resize(self.vWidth-20, vRow*(BUTTON_H+10))
         #
 
-
-
-    def double_click(self):
+    def fDoubleClick(self):
         #
         # If after receiving the first click, the timer isn't running, start the timer and return.
         if not self.dblClickTimer.isActive():
@@ -163,37 +174,66 @@ class CustomTab(QtGui.QScrollArea):
             return
         #
 
-    def right_click(self):
+    def fRightClick(self):
         #
         vPos = self.cursor().pos()
-        self.buttons_selected = str(self.childAt(self.mapFromGlobal(vPos)).objectName()) # Selected button.
-        self.qtMenu.exec_(vPos) # Execute menu.
+        # Selected button to string.
+        self.buttons_selected = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
+        # Execute menu.
+        self.qtMenu.exec_(vPos)
         #
 
     def on_view(self):
         #
-        # If caller is an action.
-        if type(self.sender()) == type(QtGui.QPushButton()):
+        if type(self.sender()) == type(QtGui.QPushButton()): # If caller is an action.
             self.b.ExportFile(str(self.sender().objectName()), execute=True)
-        # If caller is a button.
-        else:
+        else: # If caller is a button.
             self.b.ExportFile(self.buttons_selected, execute=True)
         #
 
     def on_edit(self):
         #
-        self.b.ExportFile(self.buttons_selected, execute=True)
+        temp_dir = os.getenv('temp') + '__temp_py__'
+        filename = temp_dir + '\\' + self.buttons_selected
+        #
+        try:
+            os.mkdir(temp_dir)
+        except:
+            print('Cannot create temp file!')
+        #
+        # Create temp file and return file hash.
+        old_hash = self.b.ExportFile(fname=self.buttons_selected, path=temp_dir, execute=False)
+        # Execute.
+        os.system('"%s"&exit' % filename)
+        #
+        md4 = MD4.new(open(filename, 'rb').read())
+        hash = md4.hexdigest() # New hash.
+        del md4
+        #
+        if old_hash != hash:
+            qtMsg = QtGui.QMessageBox.warning(self, 'Save changes ? ...',
+                'File "%s" was changed! Save changes ?' % self.buttons_selected, 'Yes', 'No')
+            if qtMsg == 0: # Clicked yes.
+                self.b.AddFile(filename)
+        #
+        os.remove(filename) # Del file.
+        dirs = glob.glob(os.getenv('temp') + '\\' + '__*py*__')
+        try:
+            for dir in dirs:
+                shutil.rmtree(dir) # Del all temp folders.
+        except: pass
+        del dirs
         #
 
     def on_copy(self):
         #
         qtBS = self.buttons_selected # Selected button.
-        qtMsg = QtGui.QMessageBox.question(self.centralwidget, 'Copy file ? ...',
+        qtMsg = QtGui.QMessageBox.question(self, 'Copy file ? ...',
             'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
         if qtMsg == 0: # Clicked yes.
             ret = self.b.CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
             if ret == 0: # If Briefcase returns 0, create new button.
-                self._create_button('copy of '+qtBS)
+                self._create_button('copy of ' + qtBS)
                 self.fRefresh()
         del qtBS, qtMsg
         #
@@ -201,7 +241,7 @@ class CustomTab(QtGui.QScrollArea):
     def on_delete(self):
         #
         qtBS = self.buttons_selected # Selected button.
-        qtMsg = QtGui.QMessageBox.warning(self.centralwidget, 'Delete file ? ...',
+        qtMsg = QtGui.QMessageBox.warning(self, 'Delete file ? ...',
             'Are you sure you want to delete "%s" ?' % qtBS, 'Yes', 'No')
         if qtMsg == 0: # Clicked yes.
             ret = self.b.DelFile(fname=qtBS, version=0)
@@ -215,7 +255,7 @@ class CustomTab(QtGui.QScrollArea):
     def on_rename(self):
         #
         qtBS = self.buttons_selected # Selected button.
-        qtTxt, qtMsg = QtGui.QInputDialog.getText(self.centralwidget, 'Rename file ? ...',
+        qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Rename file ? ...',
             'New name :', QtGui.QLineEdit.Normal, qtBS)
         if qtMsg and str(qtTxt): # Clicked yes and text exists.
             ret = self.b.RenFile(fname=qtBS, new_fname=str(qtTxt))
@@ -223,8 +263,8 @@ class CustomTab(QtGui.QScrollArea):
                 self.buttons[qtBS].setObjectName(qtTxt)
                 self.buttons[qtBS].setStatusTip(qtTxt)
                 #
-                if len(qtTxt)>12:
-                    fname = qtTxt[:12]+' (...)'
+                if len(qtTxt) > 12:
+                    fname = qtTxt[:12] + ' (...)'
                 else:
                     fname = qtTxt
                 self.buttons[qtBS].setText(fname)
@@ -243,7 +283,7 @@ class CustomTab(QtGui.QScrollArea):
             prop['labels'] = '-'
         #
         if prop['versions'] == 1:
-            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
+            QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
                 <br><b>File Name</b> : %(fileName)s
                 <br><b>intern FileName</b> : %(internFileName)s
                 <br><b>FileSize</b> : %(lastFileSize)i
@@ -252,7 +292,7 @@ class CustomTab(QtGui.QScrollArea):
                 <br><b>labels</b> : %(labels)s
                 <br><b>versions</b> : %(versions)i<br>''' % prop)
         else:
-            QtGui.QMessageBox.information(self.centralwidget, 'Properties for %s' % qtBS, '''
+            QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
                 <br><b>File Name</b> : %(fileName)s
                 <br><b>intern FileName</b> : %(internFileName)s
                 <br><b>first FileSize</b> : %(firstFileSize)i
@@ -268,19 +308,6 @@ class CustomTab(QtGui.QScrollArea):
         del qtBS, prop
         #
 
-
-
-    def fDuplicate(self):
-        '''
-        Duplicate one file.
-        '''
-        pass
-
-    def fRename(self):
-        '''
-        Rename one file.
-        '''
-        pass
 
 #
 
