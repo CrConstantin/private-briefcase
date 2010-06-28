@@ -28,8 +28,8 @@
 # Standard libraries.
 import os, sys
 import re
-import shutil
 import glob
+import shutil
 import sqlite3
 import zlib, bz2
 import tempfile
@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r59'
+__version__ = 'r60'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -51,7 +51,7 @@ class Briefcase:
         '''
         Create new Database, or connect to an old Database. \n\
         If you don't know the correct password, you cannot acces the crypted data from tables. \n\
-        Make sure you remember the password. \n\
+        Just make sure you remember the password. \n\
         Valid passwords : a string, a null value, or False. \n\
         One SQLITE3 file is used for each Briefcase instance. \n\
         '''
@@ -251,7 +251,7 @@ class Briefcase:
         if type(password) == type('') or type(password) == type(u''):
             md4 = MD4.new(password)
             pwd_hash = md4.hexdigest()
-        # If password has default value.
+        # If password uses database default value.
         elif password == 1:
             pwd_hash = self.gpwd_hash
         # If password is null in some way, hash must be also null.
@@ -429,10 +429,14 @@ class Briefcase:
             self._log(2, 'Func ExportFile: path "%s" doesn\'t exist!' % path)
             return -1
 
+        if not path and not execute:
+            self._log(2, 'Func ExportFile: no path and no execute! The file will be generated and deleted immediately!')
+            return -1
+
         # If version is a positive number, get that version.
         if version > 0:
             try:
-                selected_version = self.c.execute('select raw from %s where version=%s' %
+                selected_version = self.c.execute('select raw, hash from %s where version=%s' %
                     (filename, version)).fetchone()
             except:
                 self._log(2, 'Func ExportFile: cannot find version "%i" for file "%s"!' %\
@@ -441,7 +445,7 @@ class Briefcase:
         # Else, get the latest version.
         else:
             try:
-                selected_version = self.c.execute('select raw from %s order by version desc' %
+                selected_version = self.c.execute('select raw, hash from %s order by version desc' %
                     filename).fetchone()
             except:
                 self._log(2, 'Func ExportFile: cannot find the file called "%s"!' % fname)
@@ -494,13 +498,15 @@ class Briefcase:
         if execute:
             os.system('"%s"&exit' % filename)
             os.remove(filename)
-        # If not path, delete all temp folders.
+
+        # If no path provided, delete all temp folders.
         if not path:
             dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
             try:
                 for dir in dirs: shutil.rmtree(dir)
             except: pass
-        return 0
+        # Return file hash.
+        return selected_version[1]
 
 
     def ExportAll(self, path, password=1):
