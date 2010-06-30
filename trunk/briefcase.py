@@ -9,7 +9,7 @@
 '''
 
 '''
-    Every briefcase file is an SQLITE3 database containing : \n\
+    Every briefcase file is an SQLITE3 database containing tables : \n\
     - _info_ table : pwd BLOB, date TEXT, user TEXT, version TEXT; \n\
         it stores global password for database (hashed), date created, version of briefcase software. \n\
     - _files_ table : file TEXT unique, pwd BLOB, labels TEXT; \n\
@@ -40,9 +40,15 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r61'
+__version__ = 'r62'
 __all__ = ['Briefcase', '__version__']
 
+
+EXEC_info_ = 'create table if not exists _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)'
+EXEC_files_ = 'create table if not exists _files_ (file TEXT unique, pwd BLOB, labels TEXT)'
+EXEC_statistics_ = 'create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, ' \
+    'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)'
+EXEC_logs_ = 'create table if not exists _logs_ (date TEXT, msg TEXT)'
 
 class Briefcase:
     """ Main class """
@@ -85,24 +91,23 @@ class Briefcase:
             if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
 
-        # Create _files_ table with original names of the files and hashed passwords.
-        self.c.execute('create table if not exists _files_ (file TEXT unique, pwd BLOB, labels TEXT)')
         # Create _info_ table with database password, date created and user.
-        self.c.execute('create table if not exists _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)')
+        self.c.execute(EXEC_info_)
+        # Create _files_ table with original names of the files and hashed passwords.
+        self.c.execute(EXEC_files_)
         # Create _statistics_ table.
-        self.c.execute('create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, '
-            'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)')
+        self.c.execute(EXEC_statistics_)
         # Create _logs_ table.
-        self.c.execute('create table if not exists _logs_ (date TEXT, msg TEXT)')
+        self.c.execute(EXEC_logs_)
 
         if exists_db:
             self.c.execute('insert into _logs_ (date, msg) values (?,?)',
-            [strftime("%Y-%m-%d %H:%M:%S"), ('Username %s opens database.' % os.getenv('USERNAME'))])
+            [strftime("%Y-%m-%d %H:%M:%S"), ('Username "%s" opens database.' % os.getenv('USERNAME'))])
         else:
             self.c.execute('insert into _info_ (pwd, date, user, version) values (?,?,?,?)',
                 [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME'), __version__])
             self.c.execute('insert into _logs_ (date, msg) values (?,?)',
-            [strftime("%Y-%m-%d %H:%M:%S"), ('Username %s creates database.' % os.getenv('USERNAME'))])
+            [strftime("%Y-%m-%d %H:%M:%S"), ('Username "%s" creates database.' % os.getenv('USERNAME'))])
 
         #
         self.conn.commit()
@@ -770,9 +775,10 @@ class Briefcase:
         '''
         ti = clock()
 
-        self.c.execute('drop table _statistics_') # Delete table _statistics_.
-        self.c.execute('create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, '
-            'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)')
+        self.c.execute('drop table if exists _statistics_') # Delete table _statistics_.
+        self.c.execute(EXEC_statistics_)
+        self.conn.commit()
+
         # Rebuilding statistics.
         for fname in self.c.execute('select file from _files_ order by file asc').fetchall():
             self.FileStatistics(fname[0])

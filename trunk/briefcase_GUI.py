@@ -26,12 +26,17 @@ class CustomDialog(QtGui.QDialog):
         super(CustomDialog, self).__init__(parent)
         self.title = title
         self.action = action
-        #
-        self.resize(300, 100)
-        self.setMinimumSize(QtCore.QSize(280, 90))
-        self.setMaximumSize(QtCore.QSize(320, 110))
         self.setWindowTitle(title)
         self.setWhatsThis(whatsthis)
+        #
+        if self.action == 'Open !':
+            self.resize(300, 100)
+            self.setMinimumSize(QtCore.QSize(290, 90))
+            self.setMaximumSize(QtCore.QSize(310, 110))
+        else:
+            self.resize(300, 130)
+            self.setMinimumSize(QtCore.QSize(290, 120))
+            self.setMaximumSize(QtCore.QSize(310, 140))
         #
         # Buttons.
         self.browse = QtGui.QPushButton('...', self)
@@ -40,22 +45,30 @@ class CustomDialog(QtGui.QDialog):
         self.dir.setMinimumSize(QtCore.QSize(20, 5))
         self.dir.setFocus(0)
         #
+        # Password field.
         self.pwd = QtGui.QLineEdit(self)
         self.pwd.setMinimumSize(QtCore.QSize(1, 22))
         self.pwd.setEchoMode(QtGui.QLineEdit.Password)
+        self.pwd2 = QtGui.QLineEdit(self)
+        self.pwd2.setMinimumSize(QtCore.QSize(1, 22))
+        self.pwd2.setEchoMode(QtGui.QLineEdit.Password)
+        if self.action != 'Create !':
+            self.pwd2.hide()
+        #
+        # Action button.
         self.btn = QtGui.QPushButton(action, self)
         self.btn.setMinimumSize(QtCore.QSize(1, 20))
         self.btn.setDefault(True)
         #
+        # Labels.
         self.lbl = QtGui.QLineEdit(self)
         self.lbl.setMinimumSize(QtCore.QSize(1, 22))
-        self.lbl.hide()
-        #
-        # Labels.
         self.browseL = QtGui.QLabel('File', self)
         self.pwdL = QtGui.QLabel('Password', self)
         self.lblL = QtGui.QLabel('Labels', self)
-        self.lblL.hide()
+        if self.action != 'Add !':
+            self.lbl.hide()
+            self.lblL.hide()
         #
         self.browse.clicked.connect(self.Browse)
         self.btn.clicked.connect(self.Exit)
@@ -66,9 +79,10 @@ class CustomDialog(QtGui.QDialog):
         layout.addWidget(self.browse, 1, 7, 1, 1)
         layout.addWidget(self.pwdL, 2, 1, 1, 1)
         layout.addWidget(self.pwd, 2, 2, 1, 6)
-        layout.addWidget(self.lblL, 3, 1, 1, 1)
-        layout.addWidget(self.lbl, 3, 2, 1, 6)
-        layout.addWidget(self.btn, 4, 1, 1, 7)
+        layout.addWidget(self.pwd2, 3, 2, 1, 6)
+        layout.addWidget(self.lblL, 4, 1, 1, 1)
+        layout.addWidget(self.lbl, 4, 2, 1, 6)
+        layout.addWidget(self.btn, 5, 1, 1, 7)
         self.setLayout(layout)
         #
 
@@ -100,8 +114,6 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Some settings.
         self.resize(800, 600)
-        #self.setMinimumSize(QtCore.QSize(800, 600))
-        #self.setMaximumSize(QtCore.QSize(800, 600))
         QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('CleanLooks'))
         QtGui.QApplication.setPalette(QtGui.QApplication.style().standardPalette())
         self.setObjectName('MainWindow')
@@ -157,12 +169,17 @@ class MainWindow(QtGui.QMainWindow):
         self.actionExport.setVisible(False)
         self.actionExport.setShortcut('Ctrl+E')
         #
+        self.actionCleanup = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Warning.png')), 'Cleanup !', self)
+        self.actionCleanup.setToolTip("Cleanup Database ! (Ctrl+1)")
+        self.actionCleanup.setVisible(False)
+        self.actionCleanup.setShortcut('Ctrl+1')
+        #
         self.actionDBProperties = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Properties.png')), 'Properties', self)
         self.actionDBProperties.setToolTip("Briefcase details (Ctrl+D)")
         self.actionDBProperties.setVisible(False)
         self.actionDBProperties.setShortcut('Ctrl+D')
         #
-        self.actionShowLog = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Announce.png')), 'Log', self)
+        self.actionShowLog = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Log.png')), 'Log', self)
         self.actionShowLog.setToolTip("Show briefcase log (Ctrl+L)")
         self.actionShowLog.setVisible(False)
         self.actionShowLog.setShortcut('Ctrl+L')
@@ -190,6 +207,8 @@ class MainWindow(QtGui.QMainWindow):
         toolBar.addAction(self.actionAddFiles)
         self.actionExport.triggered.connect(self.on_export)
         toolBar.addAction(self.actionExport)
+        self.actionCleanup.triggered.connect(self.on_cleanup)
+        toolBar.addAction(self.actionCleanup)
         self.actionDBProperties.triggered.connect(self.on_db_properties)
         toolBar.addAction(self.actionDBProperties)
         self.actionShowLog.triggered.connect(self.on_show_log)
@@ -256,6 +275,7 @@ class MainWindow(QtGui.QMainWindow):
         if not self.tabWidget.count():
             self.actionAddFiles.setVisible(False)
             self.actionExport.setVisible(False)
+            self.actionCleanup.setVisible(False)
             self.actionDBProperties.setVisible(False)
             self.actionShowLog.setVisible(False)
         #
@@ -267,9 +287,13 @@ class MainWindow(QtGui.QMainWindow):
             'directory where you want to create the new Briefcase file. You can set a default '\
             'password, but password is optional.', 'Create !')
         dlg.exec_()
-        dir, pwd = str(dlg.dir.text()), str(dlg.pwd.text())
+        dir, pwd, pwd2 = str(dlg.dir.text()), str(dlg.pwd.text()), str(dlg.pwd2.text())
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
+        if pwd != pwd2:
+            QtGui.QMessageBox.warning(self.centralwidget, 'Will not Create', '<br>Passwords don\'t match !<br>')
+            return
+        if not pwd: pwd = False # If no password, password is Null.
         #
         tab_name = os.path.split(dir.title())[1]
         new_tab = CustomTab(self, tab_name, dir, pwd)
@@ -278,6 +302,7 @@ class MainWindow(QtGui.QMainWindow):
         #
         self.actionAddFiles.setVisible(True)
         self.actionExport.setVisible(True)
+        self.actionCleanup.setVisible(True)
         self.actionDBProperties.setVisible(True)
         self.actionShowLog.setVisible(True)
         #
@@ -290,10 +315,13 @@ class MainWindow(QtGui.QMainWindow):
         if self.default_file:
             dlg.dir.setText(self.default_file)
             dlg.pwd.setFocus(0)
+        #
         dlg.exec_()
         dir, pwd = str(dlg.dir.text()), str(dlg.pwd.text())
+        if self.default_file and not dlg.result(): sys.exit(0) # If open with ARGS and canceled, exit.
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
+        if not pwd: pwd = False # If no password, password is Null.
         #
         if not os.path.exists(dir):
             QtGui.QMessageBox.warning(self.centralwidget, 'Will not Open', '<br>"%s" doesn\'t exist !<br>' % dir)
@@ -319,6 +347,7 @@ class MainWindow(QtGui.QMainWindow):
         #
         self.actionAddFiles.setVisible(True)
         self.actionExport.setVisible(True)
+        self.actionCleanup.setVisible(True)
         self.actionDBProperties.setVisible(True)
         self.actionShowLog.setVisible(True)
         #
@@ -335,11 +364,6 @@ class MainWindow(QtGui.QMainWindow):
         dlg = CustomDialog(vCurrent, 'Add files to briefcase', 'Select the files to be '
             'added. You can specify a password and one or more labels, separated by ";".', 'Add !')
         dlg.browseL.setText('Files')
-        dlg.lbl.show()
-        dlg.lblL.show()
-        dlg.resize(300, 130)
-        dlg.setMinimumSize(QtCore.QSize(300, 130))
-        dlg.setMaximumSize(QtCore.QSize(300, 130))
         dlg.exec_()
         # Selected files are separated by ";" so must be exploded.
         dir = str(dlg.dir.text()).split(';')
@@ -366,6 +390,16 @@ class MainWindow(QtGui.QMainWindow):
         if input:
             vCurrent.b.ExportAll(str(input))
             QtGui.QMessageBox.information(vCurrent, 'Export', 'Export finished !')
+        #
+
+    def on_cleanup(self):
+        #
+        vCurrent = self.tabWidget.currentWidget() # Current tab.
+        qtMsg = QtGui.QMessageBox.warning(vCurrent, 'Cleanup database ? ...',
+            'Are you sure you want to cleanup the database ?', 'Yes', 'No')
+        if qtMsg == 0: # Clicked yes.
+            vCurrent.b.Cleanup()
+            QtGui.QMessageBox.information(vCurrent, 'Cleanup', 'Cleanup finished !')
         #
 
     def on_db_properties(self):
@@ -450,10 +484,30 @@ class MainWindow(QtGui.QMainWindow):
     def on_view(self):
         #
         vCurrent = self.tabWidget.currentWidget() # Current tab.
+        #
         if type(self.sender()) == type(QtGui.QPushButton()): # If caller is an action.
-            vCurrent.b.ExportFile(str(self.sender().objectName()), execute=True)
+            vFile = str(self.sender().objectName())
         else: # If caller is a button.
-            vCurrent.b.ExportFile(vCurrent.buttons_selected, execute=True)
+            vFile = vCurrent.buttons_selected
+        #
+        vRes = vCurrent.b.ExportFile(vFile, execute=True)
+        #
+        for i in range(3):
+            if vRes != -1:
+                break
+            else:
+                qtTxt, qtMsg = QtGui.QInputDialog.getText(None, 'Enter password',
+                    'You must enter file passord :', QtGui.QLineEdit.Password)
+                qtTxt = str(qtTxt.toUtf8())
+                if qtMsg:
+                    vRes = vCurrent.b.ExportFile(vFile, qtTxt, execute=True)
+                else:
+                    return
+        #
+        if vRes == -1: # If password is still wrong.
+                QtGui.QMessageBox.critical(vCurrent, 'Error on view',
+                    '<br>Wrong password 3 times !<br>')
+        del vFile, vRes, vCurrent
         #
 
     def on_edit(self):
@@ -469,6 +523,24 @@ class MainWindow(QtGui.QMainWindow):
         #
         # Create temp file and return file hash.
         old_hash = vCurrent.b.ExportFile(fname=vCurrent.buttons_selected, path=temp_dir, execute=False)
+        #
+        for i in range(3):
+            if old_hash != -1:
+                break
+            else:
+                qtTxt, qtMsg = QtGui.QInputDialog.getText(None, 'Enter password',
+                    'You must enter file passord :', QtGui.QLineEdit.Password)
+                qtTxt = str(qtTxt.toUtf8())
+                if qtMsg:
+                    old_hash = vCurrent.b.ExportFile(fname=vCurrent.buttons_selected, password=qtTxt, path=temp_dir, execute=False)
+                else:
+                    return
+        #
+        if old_hash == -1: # If password is still wrong.
+                QtGui.QMessageBox.critical(vCurrent, 'Error on edit',
+                    '<br>Wrong password 3 times !<br>')
+                return
+        #
         # Execute.
         os.system('"%s"&exit' % filename)
         #
@@ -532,9 +604,9 @@ class MainWindow(QtGui.QMainWindow):
         qtBS = vCurrent.buttons_selected # Selected button.
         qtTxt, qtMsg = QtGui.QInputDialog.getText(vCurrent, 'Rename file ? ...',
             'New name :', QtGui.QLineEdit.Normal, qtBS)
-        if qtMsg and str(qtTxt): # Clicked yes and text exists.
-            # Text becomes Lower Python String.
-            qtTxt = str(qtTxt).lower()
+        # Text becomes Lower Python String.
+        qtTxt = str(qtTxt.toUtf8()).lower()
+        if qtMsg and qtTxt: # Clicked yes and text exists.
             # Call Briefcase Rename function.
             ret = vCurrent.b.RenFile(fname=qtBS, new_fname=qtTxt)
             if ret == 0: # If Briefcase returns 0, rename the button.
