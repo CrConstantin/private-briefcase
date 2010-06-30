@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r60'
+__version__ = 'r61'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -642,7 +642,7 @@ class Briefcase:
         # Check file existence.
         if not self.c.execute('select file from _files_ where file = ?', [fname.lower()]).fetchone():
             self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
-            return -1
+            return {}
 
         # Size.
         biggestSize = self.c.execute('select size from %s order by size desc' %
