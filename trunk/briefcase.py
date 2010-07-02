@@ -40,14 +40,13 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r62'
+__version__ = 'r63'
 __all__ = ['Briefcase', '__version__']
 
 
 EXEC_info_ = 'create table if not exists _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)'
 EXEC_files_ = 'create table if not exists _files_ (file TEXT unique, pwd BLOB, labels TEXT)'
-EXEC_statistics_ = 'create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, ' \
-    'size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)'
+EXEC_statistics_ = 'create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)'
 EXEC_logs_ = 'create table if not exists _logs_ (date TEXT, msg TEXT)'
 
 class Briefcase:
@@ -91,6 +90,7 @@ class Briefcase:
             if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
                 raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
 
+        global EXEC_info_, EXEC_files_, EXEC_statistics_, EXEC_logs_
         # Create _info_ table with database password, date created and user.
         self.c.execute(EXEC_info_)
         # Create _files_ table with original names of the files and hashed passwords.
@@ -179,7 +179,7 @@ class Briefcase:
         '''
         Prints debug and error messages. \n\
         level 1 = info message, level 2 = fatal error. \n\
-        verbose 0 = silence, verbose 1 = print errors, verbose 2 = print all. \n\
+        verbose 0 = silence, verbose 1 = print errors, verbose 2+ = print all. \n\
         '''
 
         if log:
@@ -195,7 +195,7 @@ class Briefcase:
                 print( msg )
                 return 1
         elif self.verbose >= 2:
-            # All messages are printed.
+            # All messages are logged.
             print( msg )
             return 2
 
@@ -518,6 +518,7 @@ class Briefcase:
         '''
         Export all files into one folder. \n\
         Only the most recent version of each file is exported. \n\
+        The files that don't use the global password, will fail to export. \n\
         '''
         #
         ti = clock()
@@ -561,6 +562,26 @@ class Briefcase:
             self._log(2, 'Func ExportAll: File "%s" exported successfully.' % temp_file[1])
 
         self._log(1, 'Exporting %i files took %.4f sec.' % (len(all_files), clock()-ti))
+        return 0
+
+
+    def Join(self, path1, **args):
+        '''
+        Joins two or more briefcase files. \n\
+        All files from first briefcase file overwrite eventual duplicates from second briefcase,
+        the resulted files overwrite eventual duplicates from third briefcase,
+        the resulted files overwrite eventual duplicates from forth briefcase, etc,
+        and the result is always stored in the last briefcase file, without changing the other briefcases. \n\
+        If there are no duplicate files in the joining briefcases, all files will simply join, without any overwrite. \n\
+        If one briefcase doesn't exist, it will be created, so you can join more briefcases into a new briefcase,
+        without changing any other briefcase file. \n\
+        '''
+        #
+        ti = clock()
+        #
+
+        #
+        self._log(1, 'Joining databases took %.4f sec.' % clock()-ti)
         return 0
 
 
@@ -775,9 +796,12 @@ class Briefcase:
         '''
         ti = clock()
 
-        self.c.execute('drop table if exists _statistics_') # Delete table _statistics_.
-        self.c.execute(EXEC_statistics_)
-        self.conn.commit()
+        global EXEC_statistics_, EXEC_logs_
+        self.c.execute('drop table _statistics_') # Delete table _statistics_.
+        self.c.execute(EXEC_statistics_.replace(' if not exists', ''))
+
+        self.c.execute('drop table _logs_') # Delete table _logs_.
+        self.c.execute(EXEC_logs_.replace(' if not exists', ''))
 
         # Rebuilding statistics.
         for fname in self.c.execute('select file from _files_ order by file asc').fetchall():
