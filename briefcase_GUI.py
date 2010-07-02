@@ -331,13 +331,13 @@ class MainWindow(QtGui.QMainWindow):
         # Check for existance in all tabs.
         for vTab in range(self.tabWidget.count()):
             if self.tabWidget.tabText(vTab) == tab_name:
-                QtGui.QMessageBox.warning(self.centralwidget, 'Will not Open', '<br>"%s" is already open!<br>' % tab_name)
+                QtGui.QMessageBox.warning(self.centralwidget, 'Will not Open', '<br>"%s" is already open !<br>' % tab_name)
                 return
         #
         try:
             b = Briefcase(dir, pwd) # Briefcase for current tab.
         except:
-            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Open', '<br>Error! Wrong password!<br>')
+            QtGui.QMessageBox.critical(self.centralwidget, 'Error on Open', '<br>Error ! Wrong password !<br>')
             return
         #
         new_tab = CustomTab(self, tab_name, dir, pwd)
@@ -388,7 +388,8 @@ class MainWindow(QtGui.QMainWindow):
         input = f.getExistingDirectory(vCurrent, 'Select a folder to export into :',
             os.getcwd())
         if input:
-            vCurrent.b.ExportAll(str(input))
+            input = str(input.toUtf8())
+            vRet = vCurrent.b.ExportAll(input)
             QtGui.QMessageBox.information(vCurrent, 'Export', 'Export finished !')
         #
 
