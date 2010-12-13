@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# Resource object code
-#
-# Created: Wed Jun 30 13:59:57 2010
-#      by: The Resource Compiler for PyQt (Qt v4.6.2)
-#
-# WARNING! All changes made in this file will be lost!
-
 from PyQt4 import QtCore
 
 qt_resource_data = "\

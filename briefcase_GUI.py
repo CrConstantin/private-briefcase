@@ -252,8 +252,8 @@ class MainWindow(QtGui.QMainWindow):
         if default_file:
             self.default_file = default_file[0]
             self.on_open()
-        else:
-            self.default_file = ''
+        # Reset.
+        self.default_file = ''
         #
 
     def closeEvent(self, event):
@@ -515,7 +515,7 @@ class MainWindow(QtGui.QMainWindow):
         #
         vCurrent = self.tabWidget.currentWidget() # Current tab.
         temp_dir = os.getenv('temp') + '__temp_py__'
-        filename = temp_dir + '\\' + vCurrent.buttons_selected
+        filename = temp_dir + '/' + vCurrent.buttons_selected
         #
         try:
             os.mkdir(temp_dir)
@@ -543,7 +543,10 @@ class MainWindow(QtGui.QMainWindow):
                 return
         #
         # Execute.
-        os.system('"%s"&exit' % filename)
+        if os.name=='posix':
+            os.system('gnome-open "%s"' % filename)
+        elif os.name=='nt':
+            os.system('"%s"&exit' % filename)
         #
         md4 = MD4.new(open(filename, 'rb').read())
         hash = md4.hexdigest() # New hash.
@@ -556,7 +559,7 @@ class MainWindow(QtGui.QMainWindow):
                 vCurrent.b.AddFile(filename)
         #
         os.remove(filename) # Del file.
-        dirs = glob.glob(os.getenv('temp') + '\\' + '__*py*__')
+        dirs = glob.glob(os.getenv('temp') + '/' + '__*py*__')
         try:
             for dir in dirs:
                 shutil.rmtree(dir) # Del all temp folders.

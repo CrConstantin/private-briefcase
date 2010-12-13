@@ -16,14 +16,14 @@
   About:
 ----------
 
- - keeps all your private files in one place, on HDD, in one big database;
+ - keeps all your private files in one place, on HDD, inside a single briefcase file;
  - briefcase files are portable;
- - all files are compressed with zlib 6 or bz2 9, and optionally crypted with AES 256;
- - you can add the same file several times, if you modify it. All changes are versioned and you can rollback anytime;
+ - all files are compressed with zlib or bz2, and optionally crypted with AES 256;
+ - you can add the same file several times, if it's changed. All changes are versioned and you can rollback anytime;
  - files can be added one by one, or multiple at the same time;
  - you can export one, or all files;
- - command line access to add, export, copy, rename and delete;
- - clean GUI to add, view, edit, version, rename and delete;
+ - command line access for all operations;
+ - clean GUI for all operations;
  - fast, secure, intuitive.
 
  - website : http://private-briefcase.googlecode.com
@@ -54,7 +54,7 @@
 -----------------
   Requirements:
 -----------------
- * Python 2.6. Private-Briefcase is written entirely in Python 2.6. (www.python.org)
+ * Python 2.6 or 2.7. Private-Briefcase is written entirely in Python 2.6. (www.python.org)
  * Python Crypto. Data is crypted AES 256. (www.pycrypto.org)
  * PyQt4. Graphical user interface with Qt. (www.riverbankcomputing.co.uk/software/pyqt/download)
 
@@ -62,8 +62,8 @@
   How to use:
 ---------------
  * In order to access Private-Briefcase class, all you have to do is : "import briefcase".
- * Alternatively, you can use command line to add, remove, rename or copy files from briefcase.
+ * Alternatively, you can use command line to add, remove, rename or copy files into/ from briefcase files.
  * Graphical user interface can be accesed by opening "briefcase_GUI.py".
  * A lot of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
- * Note : Private-Briefcase was created on a Windows XP/ Windows 7 machine, so there might be some
-    incompatibilities with other OS. Please let me know if you find any.
+ * Note : Private-Briefcase was created on a Windows XP/ Windows 7 machine, so there might be a few
+    incompatibilities with other OS-es. Please let me know if you find any.

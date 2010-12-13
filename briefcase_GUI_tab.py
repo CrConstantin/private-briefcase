@@ -28,14 +28,40 @@ class CustomTab(QtGui.QScrollArea):
         self.BUTTON_W = 98
         self.BUTTON_H = 64
         self.BAR_HEIGHT = 30
-        #
+
         # Object name is sometimes used.
         self.setObjectName(tab_name)
         # Contents widget will hold the buttons.
         self.scrollAreaContents = QtGui.QWidget(self)
         self.setWidget(self.scrollAreaContents)
+
+        # Filter text and label.
+        self.filterBox = QtGui.QLineEdit(self.scrollAreaContents)
+        self.filterBox.resize(QtCore.QSize(157, 20))
+        self.filterBox.move(50,4)
+        self.filterBox.textChanged.connect(self.fSortFilter)
+        self.filterLabel = QtGui.QLabel('&Filter:', self.scrollAreaContents)
+        self.filterLabel.move(6,6)
+        self.filterLabel.setBuddy(self.filterBox)
+
+        # Sort combo and label.
+        self.sortCombo = QtGui.QComboBox(self.scrollAreaContents)
+        self.sortCombo.addItem('File Asc', 'File Asc')
+        self.sortCombo.addItem('File Desc', 'File Desc')
+        self.sortCombo.addItem('Size Asc', 'Size Asc')
+        self.sortCombo.addItem('Size Desc', 'Size Desc')
+        self.sortCombo.addItem('Date Asc', 'Date Asc')
+        self.sortCombo.addItem('Date Desc', 'Date Desc')
+        self.sortCombo.resize(QtCore.QSize(155, 20))
+        self.sortCombo.move(260,4)
+        self.sortCombo.currentIndexChanged.connect(self.fSortFilter)
+        self.sortLabel = QtGui.QLabel('&Sort:', self.scrollAreaContents)
+        self.sortLabel.move(220,6)
+        self.sortLabel.setBuddy(self.sortCombo)
+
         # Buttons.
         self.buttons = {}
+        self.buttons_visible = []
         self.buttons_selected = None
         # Briefcase instance.
         self.b = Briefcase(database, password)
@@ -47,6 +73,7 @@ class CustomTab(QtGui.QScrollArea):
     def closeEvent(self, event):
         #
         del self.buttons
+        del self.buttons_visible
         del self.buttons_selected
         del self.parent
         del self.b
@@ -99,6 +126,25 @@ class CustomTab(QtGui.QScrollArea):
         pushButton.customContextMenuRequested.connect(self.parent.on_right_click)
         # Add button to dictionary.
         self.buttons[file_name] = pushButton
+        self.buttons_visible.append(pushButton)
+        #
+
+    def fSortFilter(self):
+        '''
+        Activate sort and filter.
+        '''
+        #
+        self.buttons_visible = []
+        #
+        ssort = str(self.sortCombo.currentText())
+        ffilter = str(self.filterBox.text())
+        if ffilter:
+            ffilter = "file like '%"+ffilter+"%'"
+        #
+        for file_name in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
+            self.buttons_visible.append(self.buttons[file_name])
+        #
+        self.fRefresh()
         #
 
     def fRefresh(self):
@@ -107,6 +153,11 @@ class CustomTab(QtGui.QScrollArea):
         This function is used when opening, adding, renaming or deleting buttons.
         '''
         #
+        # First hide ALL buttons.
+        for vButton in self.buttons:
+            self.buttons[vButton].hide()
+        self.scrollAreaContents.update()
+        #
         self.vWidth = self.width()
         # ( Width - left buttons margin - scroll bar width ) / ( button width + button distance )
         vButtonsPerLine = (self.vWidth - 5 - self.BAR_HEIGHT) // (self.BUTTON_W + 5)
@@ -114,10 +165,11 @@ class CustomTab(QtGui.QScrollArea):
         vRow = 0
         vCol = 0
         #
-        for vButton in sorted( self.buttons, key=lambda k: k.lower() ):
+        for vButton in self.buttons_visible:
             #
-            self.buttons[vButton].move( 5+vCol*(self.BUTTON_W+5), self.BAR_HEIGHT+vRow*(self.BUTTON_H+5) )
-            self.buttons[vButton].show()
+            # Move and Show visible buttons.
+            vButton.move( 5+vCol*(self.BUTTON_W+5), self.BAR_HEIGHT+vRow*(self.BUTTON_H+5) )
+            vButton.show()
             #
             # If current column is bigger than number of buttons per line.
             if vCol+1 >= vButtonsPerLine:
