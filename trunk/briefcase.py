@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r63'
+__version__ = 'r64'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -248,7 +248,7 @@ class Briefcase:
         fpath = filepath.lower()
         fname = os.path.split(fpath)[1]
 
-        if not os.path.exists(fpath):
+        if not os.path.exists(filepath):
             self._log(2, 'Func AddFile: file path "%s" doesn\'t exist!' % filepath)
             return -1
 
@@ -456,12 +456,18 @@ class Briefcase:
                 self._log(2, 'Func ExportFile: cannot find the file called "%s"!' % fname)
                 return -1
 
-        # If the path is specified, use it. Else, use a temp dir.
+        # If the path is specified, use it.
         if path:
-            filename = path + '\\' + fname
+            filename = path + '/' + fname
         else:
+            # If no path provided, delete all temp folders.
+            dirs = glob.glob(tempfile.gettempdir() + '/' + '__py*__')
+            try:
+                for dir in dirs: shutil.rmtree(dir)
+            except: pass
+            # Create a temp dir.
             f = tempfile.mkdtemp('__', '__py')
-            filename = f + '\\' + filename + os.path.splitext(fname)[1]
+            filename = f + '/' + filename + os.path.splitext(fname)[1]
             del f
 
         # Get file password hash. It can be None, (Zero), or (some hash string).
@@ -488,7 +494,7 @@ class Briefcase:
                 'able to decrypt any data!' % fname)
             # Delete any leftover temp files.
             if not path:
-                dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
+                dirs = glob.glob(tempfile.gettempdir() + '/' + '__py*__')
                 try:
                     for dir in dirs: shutil.rmtree(dir)
                 except: pass
@@ -501,15 +507,11 @@ class Briefcase:
 
         # If execute, call the file, then delete it.
         if execute:
-            os.system('"%s"&exit' % filename)
-            os.remove(filename)
+            if os.name=='posix':
+                os.system('gnone-open "%s"' % filename)
+            elif os.name=='nt':
+                os.system('"%s"&exit' % filename)
 
-        # If no path provided, delete all temp folders.
-        if not path:
-            dirs = glob.glob(tempfile.gettempdir() + '\\' + '__py*__')
-            try:
-                for dir in dirs: shutil.rmtree(dir)
-            except: pass
         # Return file hash.
         return selected_version[1]
 
@@ -551,7 +553,7 @@ class Briefcase:
                 continue
 
             # At this point, password is correct.
-            fname = path + '\\' + temp_file[1]
+            fname = path + '/' + temp_file[1]
             w = open(fname, 'wb')
             md4 = MD4.new(temp_file[1])
             filename = 't'+md4.hexdigest()
@@ -587,7 +589,7 @@ class Briefcase:
 
     def RenFile(self, fname, new_fname):
         '''
-        Rename one file. This cannot be undone, so be careful. \n\
+        Rename one file. This cannot be undone, so be careful! \n\
         '''
         ti = clock()
         if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
@@ -721,7 +723,7 @@ class Briefcase:
 
         # Validate sort expression.
         if ssort and ssort.lower() not in ['file asc', 'file desc', 'size0 asc', 'size0 desc',
-            'size desc', 'size desc', 'sizeb asc', 'sizeb desc',
+            'size asc', 'size desc', 'sizeb asc', 'sizeb desc',
             'date0 asc', 'date0 desc', 'date asc', 'date desc']: 
             self._log(2, 'Func GetFileList: sort "%s" is incorrect!' % ssort)
             return -1
