@@ -39,7 +39,7 @@ class CustomTab(QtGui.QScrollArea):
         self.filterBox = QtGui.QLineEdit(self.scrollAreaContents)
         self.filterBox.resize(QtCore.QSize(157, 20))
         self.filterBox.move(50,4)
-        self.filterBox.textChanged.connect(self.fSortFilter)
+        self.filterBox.textChanged.connect(self.fRefresh)
         self.filterLabel = QtGui.QLabel('&Filter:', self.scrollAreaContents)
         self.filterLabel.move(6,6)
         self.filterLabel.setBuddy(self.filterBox)
@@ -54,7 +54,7 @@ class CustomTab(QtGui.QScrollArea):
         self.sortCombo.addItem('Date Desc', 'Date Desc')
         self.sortCombo.resize(QtCore.QSize(155, 20))
         self.sortCombo.move(260,4)
-        self.sortCombo.currentIndexChanged.connect(self.fSortFilter)
+        self.sortCombo.currentIndexChanged.connect(self.fRefresh)
         self.sortLabel = QtGui.QLabel('&Sort:', self.scrollAreaContents)
         self.sortLabel.move(220,6)
         self.sortLabel.setBuddy(self.sortCombo)
@@ -67,7 +67,8 @@ class CustomTab(QtGui.QScrollArea):
         self.b = Briefcase(database, password)
         #
         for file_name in self.b.GetFileList(): # Populating with buttons.
-            self._create_button(file_name)
+            vInfo = self.b.FileStatistics(file_name)
+            self._create_button(file_name, vInfo['lastFileSize'], vInfo['versions'])
         #
 
     def closeEvent(self, event):
@@ -86,7 +87,7 @@ class CustomTab(QtGui.QScrollArea):
         self.fRefresh()
         #
 
-    def _create_button(self, file_name):
+    def _create_button(self, file_name, file_size, versions):
         '''
         Each button represents a file from the briefcase.
         Create a new button and add in the layout.
@@ -98,53 +99,38 @@ class CustomTab(QtGui.QScrollArea):
         pushButton.setMaximumSize(QtCore.QSize(self.BUTTON_W, self.BUTTON_H))
         pushButton.resize(QtCore.QSize(self.BUTTON_W, self.BUTTON_H))
         pushButton.setFlat(True)
-        pushButton.setObjectName(file_name) # Full file name.
-        pushButton.setStatusTip(file_name)
+        # Full name.
+        pushButton.setObjectName(file_name)
+        # Tool tip.
+        pushButton.setToolTip('<pre>%s<br>Size: %i bytes<br>Versions: %i</pre>' % (file_name, file_size, versions))
+        # Short name.
         if len(file_name) > 12:
             fname = file_name[:12] + ' (...)'
         else:
             fname = file_name
-        pushButton.setText(fname) # Short file name.
+        pushButton.setText(fname)
         # Style sheet.
         pushButton.setStyleSheet('''
-        QPushButton {
-            border-style: outset;
-            border: 1px solid #666;
-            border-radius: 5px;
-            padding: 2px;
-            margin: 0px;
-            text-align: center bottom;
-            color: #001;
-            font: 10px;
-            /* background-image: url(Extensions/Default.png);'
-            background-position: top center; */
-            }
-        QPushButton:pressed { border-style: inset; }''')
+QPushButton {
+    border-style: outset;
+    border: 1px solid #666;
+    border-radius: 5px;
+    padding: 2px;
+    margin: 0px;
+    text-align: center bottom;
+    color: #001;
+    font: 10px;
+    /* background-image: url(Extensions/Default.png);'
+    background-position: top center; */
+}
+QPushButton:pressed { border-style: inset; }''')
         pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Connect events.
         pushButton.clicked.connect(self.parent.on_double_click)
         pushButton.customContextMenuRequested.connect(self.parent.on_right_click)
-        # Add button to dictionary.
+        # Save pointer.
         self.buttons[file_name] = pushButton
         self.buttons_visible.append(pushButton)
-        #
-
-    def fSortFilter(self):
-        '''
-        Activate sort and filter.
-        '''
-        #
-        self.buttons_visible = []
-        #
-        ssort = str(self.sortCombo.currentText())
-        ffilter = str(self.filterBox.text())
-        if ffilter:
-            ffilter = "file like '%"+ffilter+"%'"
-        #
-        for file_name in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
-            self.buttons_visible.append(self.buttons[file_name])
-        #
-        self.fRefresh()
         #
 
     def fRefresh(self):
@@ -153,18 +139,29 @@ class CustomTab(QtGui.QScrollArea):
         This function is used when opening, adding, renaming or deleting buttons.
         '''
         #
-        # First hide ALL buttons.
+        # Hide ALL buttons.
         for vButton in self.buttons:
             self.buttons[vButton].hide()
-        self.scrollAreaContents.update()
-        #
+
+        # Reset all visible buttons.
+        self.buttons_visible = []
+        # Save current sort and filter.
+        ssort = str(self.sortCombo.currentText())
+        ffilter = str(self.filterBox.text())
+        if ffilter:
+            ffilter = "file like '%"+ffilter+"%'"
+
+        # Rebuild list of visible buttons.
+        for file_name in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
+            self.buttons_visible.append(self.buttons[file_name])
+
         self.vWidth = self.width()
         # ( Width - left buttons margin - scroll bar width ) / ( button width + button distance )
         vButtonsPerLine = (self.vWidth - 5 - self.BAR_HEIGHT) // (self.BUTTON_W + 5)
-        #
+
         vRow = 0
         vCol = 0
-        #
+
         for vButton in self.buttons_visible:
             #
             # Move and Show visible buttons.
@@ -180,17 +177,16 @@ class CustomTab(QtGui.QScrollArea):
                 # Got to next column.
                 vCol += 1
             #
-        #
+
         # If Column is 0, Row was already incremented.
         if vCol == 0:
             pass
         else:
             vRow += 1
-        #
+
         self.scrollAreaContents.setMinimumSize( self.vWidth-20, self.BAR_HEIGHT+vRow*(self.BUTTON_H+5) )
         self.scrollAreaContents.resize(         self.vWidth-20, self.BAR_HEIGHT+vRow*(self.BUTTON_H+5) )
         #
-
 
 #
 

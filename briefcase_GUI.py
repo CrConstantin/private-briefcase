@@ -376,7 +376,8 @@ class MainWindow(QtGui.QMainWindow):
         for elem in dir:
             vCurrent.b.AddFile(elem, pwd, lbl)
             file_name = os.path.split(elem)[1]
-            vCurrent._create_button(file_name)
+            vInfo = vCurrent.b.FileStatistics(file_name)
+            vCurrent._create_button(file_name, vInfo['lastFileSize'], vInfo['versions'])
         #
         vCurrent.fRefresh()
         #
@@ -491,10 +492,11 @@ class MainWindow(QtGui.QMainWindow):
         else: # If caller is a button.
             vFile = vCurrent.buttons_selected
         #
+        # QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile('"' + vFile + '"')) # ?
         vRes = vCurrent.b.ExportFile(vFile, execute=True)
         #
         for i in range(3):
-            if vRes != -1:
+            if vRes != -1: # If password is correct.
                 break
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(None, 'Enter password',
@@ -506,8 +508,7 @@ class MainWindow(QtGui.QMainWindow):
                     return
         #
         if vRes == -1: # If password is still wrong.
-                QtGui.QMessageBox.critical(vCurrent, 'Error on view',
-                    '<br>Wrong password 3 times !<br>')
+                QtGui.QMessageBox.critical(vCurrent, 'Error on view', '<br>Wrong password 3 times !<br>')
         del vFile, vRes, vCurrent
         #
 
@@ -538,8 +539,7 @@ class MainWindow(QtGui.QMainWindow):
                     return
         #
         if old_hash == -1: # If password is still wrong.
-                QtGui.QMessageBox.critical(vCurrent, 'Error on edit',
-                    '<br>Wrong password 3 times !<br>')
+                QtGui.QMessageBox.critical(vCurrent, 'Error on edit', '<br>Wrong password 3 times !<br>')
                 return
         #
         # Execute.
@@ -576,11 +576,13 @@ class MainWindow(QtGui.QMainWindow):
         if qtMsg == 0: # Clicked yes.
             ret = vCurrent.b.CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
             if ret == 0: # If Briefcase returns 0, create new button.
-                vCurrent._create_button('copy of ' + qtBS)
+                vInfo = vCurrent.b.FileStatistics(qtBS)
+                vCurrent._create_button('copy of ' + qtBS, vInfo['lastFileSize'], vInfo['versions'])
                 vCurrent.fRefresh()
             else:
                 QtGui.QMessageBox.critical(vCurrent, 'Error on copy',
                     '<br>Could not copy file ! Invalid file name, or file name exists !<br>')
+        #
         del vCurrent, qtBS, qtMsg
         #
 
@@ -599,6 +601,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 QtGui.QMessageBox.critical(vCurrent, 'Error on delete',
                     '<br>Could not delete file ! Invalid file name !<br>')
+        #
         del vCurrent, qtBS, qtMsg
         #
 
@@ -629,6 +632,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 QtGui.QMessageBox.critical(vCurrent, 'Error on rename',
                     '<br>Could not rename file ! Invalid file name, or file name exists !<br>')
+        #
         del vCurrent, qtBS, qtTxt, qtMsg
         #
 
@@ -675,9 +679,11 @@ class MainWindow(QtGui.QMainWindow):
 
 import res_rc
 
-app = QtGui.QApplication([])
-window = MainWindow()
-window.show()
-sys.exit(app.exec_())
+
+if __name__=='__main__':
+    app = QtGui.QApplication([])
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
 
 #Eof()
