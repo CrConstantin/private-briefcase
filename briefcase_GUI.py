@@ -22,6 +22,10 @@ from Crypto.Hash import MD4
 class CustomDialog(QtGui.QDialog):
 
     def __init__(self, parent, title, whatsthis, action):
+        '''
+        This widget is used for opening existing briefcase files,
+        for creating, or adding new files.
+        '''
         #
         super(CustomDialog, self).__init__(parent)
         self.title = title
@@ -34,7 +38,7 @@ class CustomDialog(QtGui.QDialog):
             self.setMinimumSize(QtCore.QSize(290, 90))
             self.setMaximumSize(QtCore.QSize(310, 110))
         else:
-            self.resize(300, 130)
+            self.resize(300, 150)
             self.setMinimumSize(QtCore.QSize(290, 120))
             self.setMaximumSize(QtCore.QSize(310, 140))
         #
@@ -70,6 +74,16 @@ class CustomDialog(QtGui.QDialog):
             self.lbl.hide()
             self.lblL.hide()
         #
+        # Type of archive.
+        self.lblC = QtGui.QLabel('Compression', self)
+        self.radioZLIB = QtGui.QRadioButton('ZLIB', self)
+        self.radioZLIB.setChecked(True)
+        self.radioBZ = QtGui.QRadioButton('BZ2', self)
+        if self.action != 'Add !':
+            self.lblC.hide()
+            self.radioZLIB.hide()
+            self.radioBZ.hide()
+        #
         self.browse.clicked.connect(self.Browse)
         self.btn.clicked.connect(self.Exit)
         #
@@ -82,17 +96,20 @@ class CustomDialog(QtGui.QDialog):
         layout.addWidget(self.pwd2, 3, 2, 1, 6)
         layout.addWidget(self.lblL, 4, 1, 1, 1)
         layout.addWidget(self.lbl, 4, 2, 1, 6)
-        layout.addWidget(self.btn, 5, 1, 1, 7)
+        layout.addWidget(self.lblC, 5, 1, 1, 2)
+        layout.addWidget(self.radioZLIB, 5, 3, 1, 2)
+        layout.addWidget(self.radioBZ, 5, 5, 1, 2)
+        layout.addWidget(self.btn, 6, 1, 1, 7)
         self.setLayout(layout)
         #
 
     def Browse(self):
         f = QtGui.QFileDialog()
         if self.action == 'Create !':
-            input = f.getSaveFileName(self, self.title, os.getcwd(), 'All files (*.*)')
+            input = f.getSaveFileName(self, self.title, os.getcwd(), 'All files (*.*);;PRV Files (*.prv)')
             self.dir.setText(str(input))
         elif self.action == 'Open !':
-            input = f.getOpenFileName(self, self.title, os.getcwd(), 'All files (*.*)')
+            input = f.getOpenFileName(self, self.title, os.getcwd(), 'All files (*.*);;PRV Files (*.prv)')
             self.dir.setText(str(input))
         elif self.action == 'Add !':
             input = f.getOpenFileNames(self, self.title, os.getcwd(), 'All files (*.*)')
@@ -368,13 +385,17 @@ class MainWindow(QtGui.QMainWindow):
         # Selected files are separated by ";" so must be exploded.
         dir = str(dlg.dir.text()).split(';')
         pwd = str(dlg.pwd.text())
+        compress = dlg.radioZLIB.isChecked()
         if not pwd: pwd = 1 # If password is null, use database default value.
         lbl = str(dlg.lbl.text()) # Labels.
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
         del dlg
         #
         for elem in dir:
-            vCurrent.b.AddFile(elem, pwd, lbl)
+            if compress:
+                vCurrent.b.AddFile(elem, pwd, lbl, 'zlib')
+            else:
+                vCurrent.b.AddFile(elem, pwd, lbl, 'bz2')
             file_name = os.path.split(elem)[1]
             vInfo = vCurrent.b.FileStatistics(file_name)
             vCurrent._create_button(file_name, vInfo['lastFileSize'], vInfo['versions'])

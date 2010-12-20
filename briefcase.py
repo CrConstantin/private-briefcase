@@ -40,7 +40,7 @@ from time import strftime
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
 
-__version__ = 'r64'
+__version__ = 'r66'
 __all__ = ['Briefcase', '__version__']
 
 
@@ -235,7 +235,7 @@ class Briefcase:
         return 0
 
 
-    def AddFile(self, filepath, password=1, labels='', versionable=True):
+    def AddFile(self, filepath, password=1, labels='', arch='zlib', versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
         Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
@@ -247,10 +247,13 @@ class Briefcase:
         ti = clock()
         fpath = filepath.lower()
         fname = os.path.split(fpath)[1]
+        arch = arch.lower()
 
         if not os.path.exists(filepath):
             self._log(2, 'Func AddFile: file path "%s" doesn\'t exist!' % filepath)
             return -1
+        if arch != 'zlib':
+            arch = 'bz2'
 
         # If password is a string or unicode, get the hash.
         if type(password) == type('') or type(password) == type(u''):
@@ -294,7 +297,7 @@ class Briefcase:
         # Read and transform all binary data.
         f = open(filepath, 'rb').read()
         # This is the raw data.
-        raw = self._transformb(f, password)
+        raw = self._transformb(f, password, arch)
         md4 = MD4.new(f)
         # This is the hash of the original file.
         hash = md4.hexdigest()
@@ -325,7 +328,7 @@ class Briefcase:
         self.conn.commit()
 
         ver_max = self.c.execute('select version from %s order by version desc' % filename).fetchone()
-        self._log(1, 'Adding file "%s" version "%i" took %.4f sec.' % (filepath, ver_max[0], clock()-ti))
+        self._log(1, 'Adding file "%s", arch %s, version "%i" took %.4f sec.' % (filepath, arch, ver_max[0], clock()-ti))
         return 0
 
 
@@ -460,12 +463,12 @@ class Briefcase:
         if path:
             filename = path + '/' + fname
         else:
-            # If no path provided, delete all temp folders.
+            # If no path provided, first delete all temp folders...
             dirs = glob.glob(tempfile.gettempdir() + '/' + '__py*__')
             try:
                 for dir in dirs: shutil.rmtree(dir)
             except: pass
-            # Create a temp dir.
+            # ... then, create a temp dir.
             f = tempfile.mkdtemp('__', '__py')
             filename = f + '/' + filename + os.path.splitext(fname)[1]
             del f
@@ -508,7 +511,7 @@ class Briefcase:
         # If execute, call the file, then delete it.
         if execute:
             if os.name=='posix':
-                os.system('gnone-open "%s"' % filename)
+                os.system('gnome-open "%s"' % filename)
             elif os.name=='nt':
                 os.system('"%s"&exit' % filename)
 
