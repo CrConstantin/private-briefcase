@@ -49,7 +49,7 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r67'
+__version__ = 'r68'
 __all__ = ['Briefcase', '__version__']
 
 #
@@ -439,12 +439,12 @@ class Briefcase:
 
         # If version was specified, get that version.
         if version:
-            data = self.c.execute('select raw, hash, size from %s where version=%i' % (filename, version)
-                ).fetchone()
+            data = self.c.execute('select raw, hash, size from %s where version=%i' % \
+                (filename, version)).fetchone()
         # Else, get the latest version.
         else:
-            data = self.c.execute('select raw, hash, size from %s order by version desc' % filename
-                ).fetchone()
+            data = self.c.execute('select raw, hash, size from %s order by version desc' % \
+                filename).fetchone()
 
         self.c.execute('create table %s (version integer primary key asc, raw BLOB, hash TEXT,'
             'size INTEGER, date TEXT, user TEXT)' % new_filename)
@@ -695,12 +695,12 @@ class Briefcase:
 
     def FileStatistics(self, fname, silent=True):
         '''
-        Returns a dictionary, containing the following key-value pairs : \n\
+        Generate/ return a dictionary containing the following key-value pairs : \n\
         fileName, firstSize, lastSize, firstFileDate, lastFileDate, biggestSize,
         firstFileUser, lastFileUser, fileLabels, versions. \n\
         If the file has 1 version, firstSize==lastSize and firstFileDate==lastFileDate and
         firstFileUser==lastFileUser. \n\
-        On error, it returns -1. \n\
+        On error, it returns an empty dictionary. \n\
         '''
         ti = clock()
         md4 = MD4.new( fname.lower() )

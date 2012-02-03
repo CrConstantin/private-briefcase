@@ -16,22 +16,23 @@
   About:
 ----------
 
- - keeps all your private files in one place, on HDD, inside a single briefcase file;
- - briefcase files are portable;
- - all files are compressed with zlib or bz2, and optionally crypted with AES 256;
- - you can add the same file several times, if it's changed. All changes are versioned and you can rollback anytime;
+ - keeps all your private files in one place, on HDD, in one big database;
+ - each file has its own metadata like: description, tags, etc;
+ - files are compressed with zlib 6 or bz2 9 and optionally encrypted with AES 256,
+   using the global database password, or a separate password;
+ - you can add the same file several times. All changes are versioned and you can rollback anytime;
  - files can be added one by one, or multiple at the same time;
  - you can export one, or all files;
- - command line access for all operations;
- - clean GUI for all operations;
- - fast, secure, intuitive.
+ - command line access to add, export, copy, rename and delete;
+ - clean GUI to add, view, edit, export, version, rename and delete;
+ - fast, secure, intuitive;
 
  - website : http://private-briefcase.googlecode.com
 
 ------------
   Licence:
 ------------
-  Private-Briefcase is copyright © 2010, Cristi Constantin. All rights reserved.
+  Private-Briefcase is copyright © 2010-2012, Cristi Constantin. All rights reserved.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -54,16 +55,16 @@
 -----------------
   Requirements:
 -----------------
- * Python 2.6 or 2.7. Private-Briefcase is written entirely in Python 2.6. (www.python.org)
- * Python Crypto. Data is crypted AES 256. (www.pycrypto.org)
+ * Python 2.6 or 2.7. Private-Briefcase is written entirely in Python 2. (www.python.org)
+ * Python Crypto. Data is encrypted with AES 256. (www.pycrypto.org)
  * PyQt4. Graphical user interface with Qt. (www.riverbankcomputing.co.uk/software/pyqt/download)
 
 ---------------
   How to use:
 ---------------
- * In order to access Private-Briefcase class, all you have to do is : "import briefcase".
- * Alternatively, you can use command line to add, remove, rename or copy files into/ from briefcase files.
  * Graphical user interface can be accesed by opening "briefcase_GUI.py".
+ * Alternatively, you can use command line to add, remove, rename or copy files into/ from briefcase files.
+ * In order to access Private-Briefcase class, all you have to do is : "import briefcase".
  * A lot of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
- * Note : Private-Briefcase was created on a Windows XP/ Windows 7 machine, so there might be a few
+ * Note : Private-Briefcase was tested on Windows XP/ Windows 7/ Ubuntu, so there might be a few
     incompatibilities with other OS-es. Please let me know if you find any.
