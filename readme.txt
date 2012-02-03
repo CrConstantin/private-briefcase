@@ -16,7 +16,7 @@
   About:
 ----------
 
- - keeps all your private files in one place, on HDD, in one big database;
+ - keep all your private files in one place, on HDD, in one portable container;
  - each file has its own metadata like: description, tags, etc;
  - files are compressed with zlib 6 or bz2 9 and optionally encrypted with AES 256,
    using the global database password, or a separate password;
