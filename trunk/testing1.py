@@ -4,12 +4,15 @@
 '''
 Testing strategy :
 
+-	Generate random binary files and random ASCII passwords
+
 -	Create a new briefcase file with password;
 -	Try to open the briefcase with as many wrong passwords as possible, the file should NOT open;
 -	Add a file with pwd and try to open it with many wrong pwds, the file should NOT open;
 -	Add a few hundred files and check their number;
 -	Decrypt the files just to test if they are all intact;
 -	Add many versions for a few files, export the versions to test if they are intact;
+-	Check Export All;
 -	Copy a few files and check identity and check the number of files;
 -	Export a few "cloned" files and check with the original;
 -	Rename a few files and check the number of files;
@@ -60,6 +63,7 @@ def RandPassword():
 #
 TESTS = 10
 TEST_PASS = True
+GLOB_PWD = 'default password'
 #
 
 # Delete temp folders.
@@ -67,38 +71,44 @@ try: shutil.rmtree(os.getcwd()+'/temp_test')
 except: pass
 try: shutil.rmtree(os.getcwd()+'/temp_test_exp')
 except: pass
-# Re-create temp folders.
-os.mkdir(os.getcwd()+'/temp_test')
-os.mkdir(os.getcwd()+'/temp_test_exp')
 # Remove old briefcase file.
 try: os.remove('test.prv')
 except: pass
+# Re-create temp folders.
+os.mkdir(os.getcwd()+'/temp_test')
+os.mkdir(os.getcwd()+'/temp_test_exp')
 
 # Create Briefcase instance with password.
-b = Briefcase('test.prv', 'default password')
+b = Briefcase(database='test.prv', password=GLOB_PWD)
 del b
+
 
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: briefcase with wrong passwords.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
 
-for i in range(5):
-	pwd_len = randrange(1, 9)
-	rnd_pwd = get_random_bytes(pwd_len)
+
+for i in range(25):
+	rnd_pwd = RandPassword()
 	try:
 		Briefcase('test.prv', rnd_pwd)
-		print('This is wrong man, i cracked the briefcase with pwd: `%s` !' % rnd_pwd)
+		print('This is really wrong man, i cracked the briefcase with pwd: `%s` !' % rnd_pwd)
 		TEST_PASS = False
 	except Exception, e:
-		pass
+		print('Take %i: could not crack the briefcase! %s' % (i+1, e))
 
-print('Ok, opening the database again...\n')
+if TEST_PASS:
+	print('Test Ok, opening the database again...\n')
+else:
+	print('Test Failed, next test...\n')
 
-b = Briefcase('test.prv', 'default password')
+b = Briefcase(database='test.prv', password=GLOB_PWD)
+
 
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: adding random files in the briefcase, with default password.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
 
 for i in range(TESTS):
 	# File names...
@@ -117,14 +127,48 @@ for i in range(TESTS):
 		print('This is wrong man, file `%s` is not the same after import/ export!' % fname)
 		TEST_PASS = False
 
-	b.DelFile(short)
 	print
 
+if TEST_PASS:
+	print('Test Ok, next test...\n')
+else:
+	print('Test Failed, next test...\n')
+
+
+print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
+print('Test:: checking Export All.')
+print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
+
+shutil.rmtree(os.getcwd()+'/temp_test_exp')
+os.mkdir(os.getcwd()+'/temp_test_exp')
+b.ExportAll(os.getcwd()+'/temp_test_exp/')
+
+for i in range(TESTS):
+	# File names...
+	short = 'file%i.rnd' % i
+	fname = os.getcwd()+'/temp_test/'+short
+	ename = os.getcwd()+'/temp_test_exp/'+short
+
+	# Check identity
+	if MD5.new(open(fname, 'rb').read()).digest() != MD5.new(open(ename, 'rb').read()).digest():
+		print('This is wrong man, file `%s` is not the same after import/ export!' % fname)
+		TEST_PASS = False
+
+	b.DelFile(short)
+
 b.Cleanup()
+
+if TEST_PASS:
+	print('Test Ok, next test...\n')
+else:
+	print('Test Failed, next test...\n')
+
 
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: adding random files in the briefcase, with user password.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
 
 for i in range(TESTS):
 	# File names...
@@ -156,9 +200,19 @@ for i in range(TESTS):
 
 b.Cleanup()
 
+if TEST_PASS:
+	print('Test Ok, next test...\n')
+else:
+	print('Test Failed, next test...\n')
+
+# Close the briefcase, just for fun.
+del b
+b = Briefcase(database='test.prv', password=GLOB_PWD)
+
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: adding versions for one file, with default password.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
 
 short = 'file.rnd'
 
@@ -188,9 +242,16 @@ else:
 	print('This is wrong man, there should be only 1 file in the briefcase!')
 	TEST_PASS = False
 
+if TEST_PASS:
+	print('Test Ok, next test...\n')
+else:
+	print('Test Failed, next test...\n')
+
+
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: cloning one file many times and check identity.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
 
 for i in range(TESTS):
 	short_clone = 'file%i.rnd' % i
@@ -220,9 +281,16 @@ else:
 b.DelFile(short)
 b.Cleanup()
 
+if TEST_PASS:
+	print('Test Ok, next test...\n')
+else:
+	print('Test Failed, next test...\n')
+
+
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #')
 print('Test:: renaming files and check identity.')
 print('# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #\n')
+
 
 short = 'file.rnd'
 
@@ -260,12 +328,22 @@ for i in range(TESTS):
 
 print
 b.Cleanup()
-
-#
+print
 
 if TEST_PASS:
 	print('All tests passed! Whee!\n')
 else:
 	print('Testing failed!\n')
+
+del b
+
+# Delete temp folders.
+try: shutil.rmtree(os.getcwd()+'/temp_test')
+except: pass
+try: shutil.rmtree(os.getcwd()+'/temp_test_exp')
+except: pass
+# Remove old briefcase file.
+try: os.remove('test.prv')
+except: pass
 
 # Eof()

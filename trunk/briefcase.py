@@ -49,7 +49,7 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r68'
+__version__ = 'r69'
 __all__ = ['Briefcase', '__version__']
 
 #
@@ -73,7 +73,7 @@ def validPassword(user_pwd, old_check):
     # If both are false, the check is OK.
     if not user_pwd and not old_check:
         return True
-    new_check = buffer(PBKDF2(password=user_pwd, salt='briefcase', dkLen=16, count=5000))
+    new_check = PBKDF2(password=user_pwd, salt='briefcase', dkLen=16, count=5000).decode('latin-1')
     if new_check == old_check:
         return True
     else:
@@ -99,10 +99,10 @@ class Briefcase:
             return
         # If password is null, the key and the salt must be null.
         elif not password:
-            password = ''
-            new_check = ''
-            self.glob_key = ''
-            self.glob_salt = ''
+            password = u''
+            new_check = u''
+            self.glob_key = u''
+            self.glob_salt = u''
         #
         global __version__
         self.database = str(database)
@@ -130,12 +130,12 @@ class Briefcase:
 
         # If user provided a password and new DB, generate salt.
         elif password and not exists_db:
-            new_check = buffer(PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000))
+            new_check = PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000).decode('latin-1')
             self.glob_salt = buffer(get_random_bytes(32))
 
         # If password was provided, calculate key derivation used for encryption.
         if password:
-            self.glob_key = buffer(PBKDF2(password=password, salt=self.glob_salt, dkLen=32, count=1000))
+            self.glob_key = PBKDF2(password=password, salt=self.glob_salt, dkLen=32, count=1000)
 
         global EXEC_info_, EXEC_files_, EXEC_statistics_, EXEC_logs_
         # Create _info_ table with database password, date created and user.
@@ -163,13 +163,6 @@ class Briefcase:
         #
 
 
-    def _normalize_16(self, L):
-        '''
-        Normalize a string to 16 characters. OBSOLETE.
-        '''
-        return 'X' * ( (((L/16)+1)*16) - L )
-
-
     def _transformb(self, bdata, pwd='', arch='zlib'):
         '''
         Transforms any binary data into ready-to-write SQL information. \n\
@@ -195,7 +188,8 @@ class Briefcase:
             pwd = PBKDF2(password=pwd, salt=self.glob_salt, dkLen=32, count=1000)
         # Encrypt and return.
         crypt = AES.new(pwd)
-        vCrypt = crypt.encrypt(vCompressed + self._normalize_16(len(vCompressed)))
+        padding = 'X' * ( (((len(vCompressed)/16)+1)*16) - len(vCompressed) )
+        vCrypt = crypt.encrypt(vCompressed + padding)
         return buffer(vCrypt)
 
 
