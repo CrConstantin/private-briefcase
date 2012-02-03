@@ -2,7 +2,7 @@
 
 '''
     Briefcase-Project v1.0 \n\
-    Copyright © 2009-2010, Cristi Constantin. All rights reserved. \n\
+    Copyright © 2009-2012, Cristi Constantin. All rights reserved. \n\
     Website : http://private-briefcase.googlecode.com \n\
     This module contains Briefcase GUI class with all its functions. \n\
 '''
@@ -15,9 +15,12 @@ import shutil
 # External dependency.
 from briefcase import *
 from briefcase_GUI_tab import CustomTab
-from PyQt4 import QtCore, QtGui
 from Crypto.Hash import MD4
 
+from PyQt4 import QtCore
+from PyQt4 import QtGui
+
+#
 
 class CustomDialog(QtGui.QDialog):
 
@@ -352,7 +355,7 @@ class MainWindow(QtGui.QMainWindow):
                 return
         #
         try:
-            b = Briefcase(dir, pwd) # Briefcase for current tab.
+        	b = Briefcase(dir, pwd) # Briefcase for current tab.
         except:
             QtGui.QMessageBox.critical(self.centralwidget, 'Error on Open', '<br>Error ! Wrong password !<br>')
             return
@@ -475,7 +478,7 @@ class MainWindow(QtGui.QMainWindow):
     def on_about(self):
         #
         QtGui.QMessageBox.about(self.centralwidget, 'About Private Briefcase',
-            '<br><b>Copyright © 2009-2010</b> : Cristi Constantin. All rights reserved.<br>'
+            '<br><b>Copyright © 2009-2010</b> : Cristi Constantin.<br>All rights reserved.<br>'
             '<b>Website</b> : http://private-briefcase.googlecode.com<br>')
         #
 
@@ -521,7 +524,7 @@ class MainWindow(QtGui.QMainWindow):
                 break
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(None, 'Enter password',
-                    'You must enter file passord :', QtGui.QLineEdit.Password)
+                    'This file requires a password :', QtGui.QLineEdit.Password)
                 qtTxt = str(qtTxt.toUtf8())
                 if qtMsg:
                     vRes = vCurrent.b.ExportFile(vFile, qtTxt, execute=True)

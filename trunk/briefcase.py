@@ -2,9 +2,9 @@
 
 '''
     Briefcase-Project v1.0 \n\
-    Copyright (C) 2009-2010, Cristi Constantin. All rights reserved. \n\
+    Copyright (C) 2009-2012, Cristi Constantin. All rights reserved. \n\
     This module contains Briefcase class with all its functions. \n\
-    Tested on Windows XP and Windows 7, with Python 2.6. \n\
+    Tested on Windows XP, Windows 7 and Ubuntu, with Python 2.6/ 2.7. \n\
     External dependencies : Python Crypto. \n\
 '''
 
@@ -18,11 +18,18 @@
         file TEXT unique, size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT,
         user0 TEXT, user TEXT, labels TEXT; \n\
         it stores information about every file, everytime a file is added or removed. \n\
-    -  _logs_ table : \n\
+    - _logs_ table : \n\
         _logs_ (date TEXT, msg TEXT); \n\
         all actions can be stored in here. \n\
     - other tables, one table for each new file : \n\
         version integer primary key asc, raw BLOB, hash TEXT, size INTEGER, date TEXT, user TEXT. \n\
+'''
+
+'''
+    In the database, is stored PBKDF2(password=user_password, salt='briefcase', dkLen=16, count=5000).
+    This value is compared with the password typed by the user.
+    For encrypting files, another PBKDF2 is used, with a random salt. The salt will be stored in DB.
+    So, only the password check and the salt are stored.
 '''
 
 # Standard libraries.
@@ -39,15 +46,40 @@ from time import strftime
 # External dependency.
 from Crypto.Cipher import AES
 from Crypto.Hash import MD4
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Random import get_random_bytes
 
-__version__ = 'r66'
+__version__ = 'r67'
 __all__ = ['Briefcase', '__version__']
 
+#
 
-EXEC_info_ = 'create table if not exists _info_ (pwd BLOB, date TEXT, user TEXT, version TEXT)'
+EXEC_info_ = 'create table if not exists _info_ (pwd BLOB, salt BLOB, date TEXT, user TEXT, version TEXT)'
 EXEC_files_ = 'create table if not exists _files_ (file TEXT unique, pwd BLOB, labels TEXT)'
 EXEC_statistics_ = 'create table if not exists _statistics_ (file TEXT unique, size0 INTEGER, size INTEGER, sizeB INTEGER, date0 TEXT, date TEXT, user0 TEXT, user TEXT, labels TEXT)'
 EXEC_logs_ = 'create table if not exists _logs_ (date TEXT, msg TEXT)'
+
+#
+
+def validFileName(fname):
+    if ('\\' in fname) or ('/' in fname) or (':' in fname) or ('*' in fname) \
+        or ('?' in fname) or ('"' in fname) or ('<' in fname) or ('>' in fname) \
+        or ('|' in fname):
+        return False
+    else:
+        return True
+
+def validPassword(user_pwd, old_check):
+    # If both are false, the check is OK.
+    if not user_pwd and not old_check:
+        return True
+    new_check = buffer(PBKDF2(password=user_pwd, salt='briefcase', dkLen=16, count=5000))
+    if new_check == old_check:
+        return True
+    else:
+        return False
+
+#
 
 class Briefcase:
     """ Main class """
@@ -61,6 +93,17 @@ class Briefcase:
         One SQLITE3 file is used for each Briefcase instance. \n\
         '''
         #
+        if password and not type(password) == type('') or type(password) == type(u''):
+            raise Exception('The password must be a string! You provided type `%s`! Exiting!' % \
+                str(type(password)))
+            return
+        # If password is null, the key and the salt must be null.
+        elif not password:
+            password = ''
+            new_check = ''
+            self.glob_key = ''
+            self.glob_salt = ''
+        #
         global __version__
         self.database = str(database)
         self.verbose = 2
@@ -72,23 +115,27 @@ class Briefcase:
         #
         self.conn = sqlite3.connect(self.database)
         self.c = self.conn.cursor()
-        self.pwd = password
         #
 
-        # If password is a string or unicode, get the hash.
-        if type(password) == type('') or type(password) == type(u''):
-            md4 = MD4.new(password)
-            self.gpwd_hash = md4.hexdigest()
-        # If password is invalid, or null in some way, both password and hash must be null.
-        else:
-            self.pwd = None
-            password = None
-            self.gpwd_hash = None
-
+        # If existing DB, must check the password. The password can be null.
         if exists_db:
-            # Test user password versus database password.
-            if self.gpwd_hash != self.c.execute('select pwd from _info_').fetchone()[0]:
-                raise Exception('The password is INCORRECT! You will not be able to decrypt any data!')
+            # Both the hash and the salt can be null.
+            old_check = self.c.execute('select pwd from _info_').fetchone()[0]
+            self.glob_salt = self.c.execute('select salt from _info_').fetchone()[0]
+
+            # Validate user password.
+            if not validPassword(password, old_check):
+                raise Exception('The password is INCORRECT! Exiting!')
+                return
+
+        # If user provided a password and new DB, generate salt.
+        elif password and not exists_db:
+            new_check = buffer(PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000))
+            self.glob_salt = buffer(get_random_bytes(32))
+
+        # If password was provided, calculate key derivation used for encryption.
+        if password:
+            self.glob_key = buffer(PBKDF2(password=password, salt=self.glob_salt, dkLen=32, count=1000))
 
         global EXEC_info_, EXEC_files_, EXEC_statistics_, EXEC_logs_
         # Create _info_ table with database password, date created and user.
@@ -100,14 +147,16 @@ class Briefcase:
         # Create _logs_ table.
         self.c.execute(EXEC_logs_)
 
-        if exists_db:
-            self.c.execute('insert into _logs_ (date, msg) values (?,?)',
-            [strftime("%Y-%m-%d %H:%M:%S"), ('Username "%s" opens database.' % os.getenv('USERNAME'))])
-        else:
-            self.c.execute('insert into _info_ (pwd, date, user, version) values (?,?,?,?)',
-                [self.gpwd_hash, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME'), __version__])
+        # If new DB, add password hash and salt in INFO table. Both the hash and the salt can be null.
+        if not exists_db:
+            self.c.execute('insert into _info_ (pwd, salt, date, user, version) values (?,?,?,?,?)',
+                [new_check, self.glob_salt, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME'), __version__])
             self.c.execute('insert into _logs_ (date, msg) values (?,?)',
             [strftime("%Y-%m-%d %H:%M:%S"), ('Username "%s" creates database.' % os.getenv('USERNAME'))])
+        # If existing DB, write some logs.
+        else:
+            self.c.execute('insert into _logs_ (date, msg) values (?,?)',
+            [strftime("%Y-%m-%d %H:%M:%S"), ('Username "%s" opens database.' % os.getenv('USERNAME'))])
 
         #
         self.conn.commit()
@@ -116,7 +165,7 @@ class Briefcase:
 
     def _normalize_16(self, L):
         '''
-        Normalize a string to 16 characters.
+        Normalize a string to 16 characters. OBSOLETE.
         '''
         return 'X' * ( (((L/16)+1)*16) - L )
 
@@ -133,17 +182,18 @@ class Briefcase:
         # If password is null in some way, do not encrypt.
         if not pwd:
             return buffer(vCompressed)
-        # If password has default value.
+        # If using global password.
         elif pwd == 1:
-            # If default value is null, do not encrypt.
-            if not self.pwd:
+            # If global password is null, do not encrypt.
+            if not self.glob_key:
                 return buffer(vCompressed)
+            # If global password exists, use it.
             else:
-                pwd = self.pwd + self._normalize_16(len(self.pwd))
-        # If password is provided, normalize it to 16 characters.
+                pwd = self.glob_key
+        # If password is provided, generate key derivation.
         else:
-            pwd += self._normalize_16(len(pwd))
-        # Now crypt and return.
+            pwd = PBKDF2(password=pwd, salt=self.glob_salt, dkLen=32, count=1000)
+        # Encrypt and return.
         crypt = AES.new(pwd)
         vCrypt = crypt.encrypt(vCompressed + self._normalize_16(len(vCompressed)))
         return buffer(vCrypt)
@@ -157,18 +207,19 @@ class Briefcase:
         if not pwd:
             try: return zlib.decompress(bdata)
             except: return bz2.decompress(bdata)
-        # If password has default value.
+        # If using global password.
         elif pwd == 1:
-            # If default value is null, do not encrypt.
-            if not self.pwd:
+            # If global password is null, do not decrypt.
+            if not self.glob_key:
                 try: return zlib.decompress(bdata)
                 except: return bz2.decompress(bdata)
+            # If global password exists, use it.
             else:
-                pwd = self.pwd + self._normalize_16(len(self.pwd))
-        # If password is provided, normalize it to 16 characters.
+                pwd = self.glob_key
+        # If password is provided, generate key derivation.
         else:
-            pwd += self._normalize_16(len(pwd))
-        # Now decrypt and return.
+            pwd = PBKDF2(password=pwd, salt=self.glob_salt, dkLen=32, count=1000)
+        # Decrypt and return.
         crypt = AES.new(pwd)
         vCompressed = crypt.decrypt(bdata)
         try: return zlib.decompress(vCompressed)
@@ -255,44 +306,38 @@ class Briefcase:
         if arch != 'zlib':
             arch = 'bz2'
 
-        # If password is a string or unicode, get the hash.
+        # If password is a string or unicode, calculate the hash.
         if type(password) == type('') or type(password) == type(u''):
-            md4 = MD4.new(password)
-            pwd_hash = md4.hexdigest()
-        # If password uses database default value.
+            pwd_hash = buffer(PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000))
+        # If password is database default, do nothing.
         elif password == 1:
-            pwd_hash = self.gpwd_hash
+            pwd_hash = 1
         # If password is null in some way, hash must be also null.
         else:
             password = None
             pwd_hash = None
 
-        md4 = MD4.new(fname)
-        filename = 't'+md4.hexdigest()
-        del md4
+        filename = 't'+MD4.new(fname).hexdigest()
 
         old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fpath).fetchone()
 
+        # If the file exists and used doesn't want new versions, exit.
+        if old_pwd_hash and not versionable:
+            self._log(2, 'Func AddFile: you selected versionable=False, so new version will NOT be added!')
+            return -1
         # If file exists in DB and user provided a password.
-        if old_pwd_hash and password:
+        elif old_pwd_hash and password:
             old_pwd_hash = old_pwd_hash[0]
             # If password from user is differend from password in DB, exit.
             if old_pwd_hash != pwd_hash:
                 self._log(2, 'Func AddFile: The password is INCORRECT! You will not be able to '\
                     'decrypt/ encrypt any data!')
                 return -1
-        # If file exists in DB but no password was provided.
-        elif old_pwd_hash:
-            # ... and versionable is False, exit.
-            if not versionable:
-                self._log(2, 'Func AddFile: you selected versionable=False, so no new version '\
-                    'will be added!')
-                return -1
 
         self.c.execute('create table if not exists %s (version integer primary key asc, raw BLOB,'\
             'hash TEXT, size INTEGER, date TEXT, user TEXT)' % filename)
 
-        # Get file size.
+        # File size.
         size = os.path.getsize(filepath)
         # Read and transform all binary data.
         f = open(filepath, 'rb').read()
@@ -366,9 +411,7 @@ class Briefcase:
         The password will be the same as in the original file. \n\
         '''
         ti = clock()
-        if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
-            or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
-            or ('|' in new_fname):
+        if not validFileName(new_fname):
             self._log(2, 'Func CopyIntoNew: a file name cannot contain any of the following '\
                 'characters  \\ / : * ? " < > |')
             return -1
@@ -444,16 +487,16 @@ class Briefcase:
         # If version is a positive number, get that version.
         if version > 0:
             try:
-                selected_version = self.c.execute('select raw, hash from %s where version=%s' %
+                selected_version = self.c.execute('select raw, hash from %s where version=%s' % \
                     (filename, version)).fetchone()
             except:
-                self._log(2, 'Func ExportFile: cannot find version "%i" for file "%s"!' %\
+                self._log(2, 'Func ExportFile: cannot find version "%i" for file "%s"!' % \
                     (version, fname))
                 return -1
         # Else, get the latest version.
         else:
             try:
-                selected_version = self.c.execute('select raw, hash from %s order by version desc' %
+                selected_version = self.c.execute('select raw, hash from %s order by version desc' % \
                     filename).fetchone()
             except:
                 self._log(2, 'Func ExportFile: cannot find the file called "%s"!' % fname)
@@ -480,12 +523,10 @@ class Briefcase:
 
         # If password is a string or unicode, get the hash.
         if type(password) == type('') or type(password) == type(u''):
-            md4 = MD4.new(password)
-            pwd_hash = md4.hexdigest()
-        # If password has default value.
+            pwd_hash = buffer(PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000))
+        # If password is database default, do nothing.
         elif password == 1:
-            password = self.pwd
-            pwd_hash = self.gpwd_hash
+            pwd_hash = 1
         # If password is null in some way, hash must be also null.
         else:
             password = None
@@ -534,12 +575,10 @@ class Briefcase:
 
         # If password is a string or unicode, get the hash.
         if type(password) == type('') or type(password) == type(u''):
-            md4 = MD4.new(password)
-            pwd_hash = md4.hexdigest()
-        # If password has default value.
+            pwd_hash = buffer(PBKDF2(password=password, salt='briefcase', dkLen=16, count=5000))
+        # If password is database default, do nothing.
         elif password == 1:
-            password = self.pwd
-            pwd_hash = self.gpwd_hash
+            pwd_hash = 1
         # If password is null in some way, hash must be also null.
         else:
             password = None
@@ -595,9 +634,7 @@ class Briefcase:
         Rename one file. This cannot be undone, so be careful! \n\
         '''
         ti = clock()
-        if ('\\' in new_fname) or ('/' in new_fname) or (':' in new_fname) or ('*' in new_fname) \
-            or ('?' in new_fname) or ('"' in new_fname) or ('<' in new_fname) or ('>' in new_fname) \
-            or ('|' in new_fname):
+        if not validFileName(new_fname):
             self._log(2, 'Func RenFile: a filename cannot contain any of the following characters '\
                 ' \\ / : * ? " < > |')
             return -1
@@ -661,7 +698,7 @@ class Briefcase:
         Returns a dictionary, containing the following key-value pairs : \n\
         fileName, firstSize, lastSize, firstFileDate, lastFileDate, biggestSize,
         firstFileUser, lastFileUser, fileLabels, versions. \n\
-        If the file has 1 version, firstSize==lastSize and firstFileDate==lastFileDate and 
+        If the file has 1 version, firstSize==lastSize and firstFileDate==lastFileDate and
         firstFileUser==lastFileUser. \n\
         On error, it returns -1. \n\
         '''
@@ -727,7 +764,7 @@ class Briefcase:
         # Validate sort expression.
         if ssort and ssort.lower() not in ['file asc', 'file desc', 'size0 asc', 'size0 desc',
             'size asc', 'size desc', 'sizeb asc', 'sizeb desc',
-            'date0 asc', 'date0 desc', 'date asc', 'date desc']: 
+            'date0 asc', 'date0 desc', 'date asc', 'date desc']:
             self._log(2, 'Func GetFileList: sort "%s" is incorrect!' % ssort)
             return -1
         # Validate filter expression.
