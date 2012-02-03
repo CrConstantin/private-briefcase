@@ -49,7 +49,7 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r69'
+__version__ = 'r70'
 __all__ = ['Briefcase', '__version__']
 
 #
