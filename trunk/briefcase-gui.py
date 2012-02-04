@@ -337,7 +337,7 @@ class MainWindow(QtGui.QMainWindow):
         logs = self.tabWidget.currentWidget().b.c.execute('select date, msg from _logs_').fetchall()
         dlg = QtGui.QDialog(self)
         dlg.setMinimumSize(QtCore.QSize(400, 300))
-        dlg.resize(480, self.height())
+        dlg.resize(500, self.height()-20)
 
         table = QtGui.QTableWidget(dlg)
         table.setColumnCount(2)
@@ -594,13 +594,7 @@ class CustomTab(QtGui.QWidget):
         pushButton.setCheckable(True)
         pushButton.setFlat(True)
 
-        # Full name.
-        pushButton.setObjectName(file_name)
-        # Short name.
-        if len(file_name) > 12: pushButton.setText(file_name[:12] + ' (...)')
-        else:                   pushButton.setText(file_name)
-        # Tool tip.
-        pushButton.setToolTip('<pre>%s<br>Size: %i bytes<br>Versions: %i</pre>' % (file_name, file_size, versions))
+        self.update_button(pushButton, file_name, file_size, versions)
 
         # Style sheet.
         pushButton.setStyleSheet('''
@@ -630,6 +624,19 @@ class CustomTab(QtGui.QWidget):
 
         self.flowLayout.addWidget(pushButton)
         #
+
+
+    def update_button(self, pushButton, file_name, file_size, versions):
+        '''
+        Update button info.
+        '''
+        # Full name.
+        pushButton.setObjectName(file_name)
+        # Short name.
+        if len(file_name) > 12: pushButton.setText(file_name[:12] + ' (...)')
+        else:                   pushButton.setText(file_name)
+        # Tool tip.
+        pushButton.setToolTip('<pre>%s<br>Size: %i bytes<br>Versions: %i</pre>' % (file_name, file_size, versions))
 
 
     def fRefresh(self):
@@ -672,12 +679,11 @@ class CustomTab(QtGui.QWidget):
             vFile = str(self.sender().objectName())
         else: # If caller is a button.
             vFile = self.buttons_selected
-        #
-        # QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile('"' + vFile + '"')) # ?
+
         vRes = self.b.ExportFile(vFile, execute=True)
-        #
+
         for i in range(3):
-            if vRes != -1: # If password is correct.
+            if vRes != -1: # If password is correct, break.
                 break
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Enter password',
@@ -688,8 +694,8 @@ class CustomTab(QtGui.QWidget):
                 else:
                     return
 
-        if vRes == -1: # If password is still wrong.
-                QtGui.QMessageBox.critical(self, 'Error on view', '<br>Wrong password 3 times !<br>')
+        if vRes == -1: # If password is still wrong after 3 tries.
+            QtGui.QMessageBox.critical(self, 'Error on view', '<br>Wrong password 3 times !<br>')
 
         del vFile, vRes
         #
@@ -699,54 +705,56 @@ class CustomTab(QtGui.QWidget):
         #
         temp_dir = os.getenv('temp') + '__temp_py__'
         filename = temp_dir + '/' + self.buttons_selected
-        #
+
         try:
             os.mkdir(temp_dir)
         except:
             print('Cannot create temp file!')
-        #
+
         # Create temp file and return file hash.
         old_hash = self.b.ExportFile(fname=self.buttons_selected, path=temp_dir, execute=False)
-        #
+
         for i in range(3):
             if old_hash != -1:
                 break
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Enter password',
-                    'You must enter file passord :', QtGui.QLineEdit.Password)
+                    'This file requires a password :', QtGui.QLineEdit.Password)
                 qtTxt = str(qtTxt.toUtf8())
                 if qtMsg:
                     old_hash = self.b.ExportFile(fname=self.buttons_selected, password=qtTxt, path=temp_dir, execute=False)
                 else:
                     return
-        #
+
         if old_hash == -1: # If password is still wrong.
-                QtGui.QMessageBox.critical(self, 'Error on edit', '<br>Wrong password 3 times !<br>')
-                return
-        #
+            QtGui.QMessageBox.critical(self, 'Error on edit', '<br>Wrong password 3 times !<br>')
+            return
+
         # Execute.
         if os.name=='posix':
             os.system('gnome-open "%s"' % filename)
         elif os.name=='nt':
             os.system('"%s"&exit' % filename)
-        #
+
         md4 = MD4.new(open(filename, 'rb').read())
         hash = md4.hexdigest() # New hash.
         del md4
-        #
+
         if old_hash != hash:
             qtMsg = QtGui.QMessageBox.warning(self, 'Save changes ? ...',
                 'File "%s" was changed! Save changes ?' % self.buttons_selected, 'Yes', 'No')
             if qtMsg == 0: # Clicked yes.
                 self.b.AddFile(filename)
-        #
+
         os.remove(filename) # Del file.
         dirs = glob.glob(os.getenv('temp') + '/' + '__*py*__')
+
         try:
+            # Del all temp folders.
             for dir in dirs:
-                shutil.rmtree(dir) # Del all temp folders.
-        except: pass
-        del dirs
+                shutil.rmtree(dir)
+        except:
+            pass
         #
 
 
@@ -797,20 +805,17 @@ class CustomTab(QtGui.QWidget):
             'New name :', QtGui.QLineEdit.Normal, qtBS)
 
         # Text becomes Lower Python String.
-        qtTxt = str(qtTxt.toUtf8()).lower()
+        qtTxt = str(qtTxt.toUtf8())
+
         if qtMsg and qtTxt: # Clicked yes and text exists.
             # Call Briefcase Rename function.
             ret = self.b.RenFile(fname=qtBS, new_fname=qtTxt)
 
-            if ret == 0: # If Briefcase returns 0, rename the button.
-                self.buttons[qtBS].setObjectName(qtTxt)
-                self.buttons[qtBS].setStatusTip(qtTxt)
-                #
-                if len(qtTxt) > 12:
-                    fname = qtTxt[:12] + ' (...)'
-                else:
-                    fname = qtTxt
-                self.buttons[qtBS].setText(fname)
+            if ret == 0:
+
+                vInfo = self.b.FileStatistics(qtTxt)
+                # If Briefcase returns 0, button text and info.
+                self.update_button(self.buttons[qtBS], qtTxt, vInfo['lastFileSize'], vInfo['versions'])
                 # Pass the pointer to the new name.
                 self.buttons[qtTxt] = self.buttons[qtBS]
                 del self.buttons[qtBS]
@@ -839,24 +844,24 @@ class CustomTab(QtGui.QWidget):
 
         if prop['versions'] == 1:
             QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
-                <br><b>File Name</b> : %(fileName)s
-                <br><b>intern FileName</b> : %(internFileName)s
-                <br><b>FileSize</b> : %(lastFileSize)i
-                <br><b>FileDate</b> : %(lastFileDate)s
-                <br><b>FileUser</b> : %(lastFileUser)s
+                <br><b>file name</b> : %(fileName)s
+                <br><b>intern name</b> : %(internFileName)s
+                <br><b>size</b> : %(lastFileSize)i
+                <br><b>date</b> : %(lastFileDate)s
+                <br><b>username</b> : %(lastFileUser)s
                 <br><b>labels</b> : %(labels)s
                 <br><b>versions</b> : %(versions)i<br>''' % prop)
         else:
             QtGui.QMessageBox.information(vCurrent, 'Properties for %s' % qtBS, '''
-                <br><b>File Name</b> : %(fileName)s
-                <br><b>intern FileName</b> : %(internFileName)s
-                <br><b>first FileSize</b> : %(firstFileSize)i
-                <br><b>last FileSize</b> : %(lastFileSize)i
-                <br><b>largest Size</b> : %(biggestSize)i
-                <br><b>first FileDate</b> : %(firstFileDate)s
-                <br><b>last FileDate</b> : %(lastFileDate)s
-                <br><b>first FileUser</b> : %(firstFileUser)s
-                <br><b>last FileUser</b> : %(lastFileUser)s
+                <br><b>file name</b> : %(fileName)s
+                <br><b>intern name</b> : %(internFileName)s
+                <br><b>first fileSize</b> : %(firstFileSize)i
+                <br><b>last fileSize</b> : %(lastFileSize)i
+                <br><b>largest size</b> : %(biggestSize)i
+                <br><b>first fileDate</b> : %(firstFileDate)s
+                <br><b>last fileDate</b> : %(lastFileDate)s
+                <br><b>first fileUser</b> : %(firstFileUser)s
+                <br><b>last fileUser</b> : %(lastFileUser)s
                 <br><b>labels</b> : %(labels)s
                 <br><b>versions</b> : %(versions)i<br>''' % prop)
 
