@@ -40,6 +40,7 @@ import shutil
 import sqlite3
 import zlib, bz2
 import tempfile
+import subprocess
 from time import clock
 from time import strftime
 
@@ -254,7 +255,7 @@ class Briefcase:
         ti = clock()
 
         if not labels:
-            self.c.execute('update _files_ set labels=? where file=?', ['', fname.lower()])
+            self.c.execute('update _files_ set labels=? where file=?', ['', fname])
             return 0
 
         if type(labels) == type('') or type(labels) == type(u''):
@@ -269,12 +270,12 @@ class Briefcase:
             return -1
 
         # If file doesn't exist in database, exit.
-        if not self.c.execute('select file from _files_ where file=?', [fname.lower()]).fetchone():
+        if not self.c.execute('select file from _files_ where file=?', [fname]).fetchone():
             self._log(2, 'Func SetLabels: file "%s" doesn\'t exist!' % fname)
             return -1
 
         # Update labels in _tables_.
-        self.c.execute('update _files_ set labels=? where file=?', [sLabels, fname.lower()])
+        self.c.execute('update _files_ set labels=? where file=?', [sLabels, fname])
         self.conn.commit()
         self._log(1, 'Setting labels for file "%s" took %.4f sec.' % (fname, clock()-ti))
         return 0
@@ -283,15 +284,14 @@ class Briefcase:
     def AddFile(self, filepath, password=1, labels='', arch='zlib', versionable=True):
         '''
         If file doesn't exist in database, create the file. If file exists, add another row. \n\
-        Table name is "t" + MD4 Hexdigest of the file name (lower case). \n\
+        Table name is "t" + MD4 Hexdigest of the file name. \n\
         Each row contains : Version, Raw-data, Hash of original data, Size, Date Time, User Name. \n\
         Raw-data is : original binary data -> compressed -> crypted. \n\
         Versionable=False checks if the file is in the database. If it is, an error is raised
         and the file is not added. \n\
         '''
         ti = clock()
-        fpath = filepath.lower()
-        fname = os.path.split(fpath)[1]
+        fname = os.path.split(filepath)[1]
         arch = arch.lower()
 
         if not os.path.exists(filepath):
@@ -313,7 +313,7 @@ class Briefcase:
 
         filename = 't'+MD4.new(fname).hexdigest()
 
-        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fpath).fetchone()
+        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fname).fetchone()
 
         # If the file exists and used doesn't want new versions, exit.
         if old_pwd_hash and not versionable:
@@ -339,18 +339,18 @@ class Briefcase:
         raw = self._transformb(f, password, arch)
         md4 = MD4.new(f)
         # This is the hash of the original file.
-        hash = md4.hexdigest()
+        new_hash = md4.hexdigest()
         del f, md4
 
         # Check if the new file is identical with the latest version.
         old_hash = self.c.execute('select hash from %s order by version desc' % filename).fetchone()
-        if old_hash and hash == old_hash[0]:
+        if old_hash and new_hash == old_hash[0]:
             self._log(2, 'Func AddFile: file "%s" is IDENTICAL with the version stored in the '\
                 'database!' % fname)
             return -1
 
         self.c.execute(('insert into %s (raw, hash, size, date, user) values (?,?,?,?,?)' % filename),
-            [raw, hash, size, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
+            [raw, new_hash, size, strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # If password is None, or password is False.
         if not password:
@@ -410,17 +410,17 @@ class Briefcase:
                 'characters  \\ / : * ? " < > |')
             return -1
 
-        md4 = MD4.new( fname.lower() )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
-        md4 = MD4.new( new_fname.lower() )
+        md4 = MD4.new(new_fname)
         new_filename = 't'+md4.hexdigest()
         del md4
 
         if version < 0 : version = 0
 
         # If new file name already exists, exit.
-        if self.c.execute('select file from _files_ where file="%s"' % (new_fname.lower())).fetchone():
+        if self.c.execute('select file from _files_ where file="%s"' % (new_fname)).fetchone():
             self._log(2, 'Func CopyIntoNew: there is already a file called "%s"!' % new_fname)
             return -1
 
@@ -446,9 +446,9 @@ class Briefcase:
             [data[0], data[1], data[2], strftime("%Y-%b-%d %H:%M:%S"), os.getenv('USERNAME')])
 
         # Use original password and labels of file.
-        more = self.c.execute('select pwd, labels from _files_ where file=?', [fname.lower()]).fetchone()
+        more = self.c.execute('select pwd, labels from _files_ where file=?', [fname]).fetchone()
 
-        self.c.execute('insert into _files_ (file, pwd, labels) values (?,?,?)', (new_fname.lower(),)+more)
+        self.c.execute('insert into _files_ (file, pwd, labels) values (?,?,?)', (new_fname,)+more)
         self.FileStatistics(new_fname)
         self.conn.commit()
 
@@ -464,7 +464,7 @@ class Briefcase:
         is executed from a temporary folder, or from the specified path, then the file is deleted. \n\
         '''
         ti = clock()
-        md4 = MD4.new( fname.lower() )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
 
@@ -496,22 +496,9 @@ class Briefcase:
                 self._log(2, 'Func ExportFile: cannot find the file called "%s"!' % fname)
                 return -1
 
-        # If the path is specified, use it.
-        if path:
-            filename = path + '/' + fname
-        else:
-            # If no path provided, first delete all temp folders...
-            dirs = glob.glob(tempfile.gettempdir() + '/' + '__py*__')
-            try:
-                for dir in dirs: shutil.rmtree(dir)
-            except: pass
-            # ... then, create a temp dir.
-            f = tempfile.mkdtemp('__', '__py')
-            filename = f + '/' + filename + os.path.splitext(fname)[1]
-            del f
-
         # Get file password hash. It can be None, (Zero), or (some hash string).
-        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fname.lower()).fetchone()
+        old_pwd_hash = self.c.execute('select pwd from _files_ where file="%s"' % fname).fetchone()
+
         if old_pwd_hash:
             old_pwd_hash = old_pwd_hash[0]
 
@@ -530,25 +517,37 @@ class Briefcase:
         if old_pwd_hash != pwd_hash:
             self._log(2, 'Func ExportFile: Password for file "%s" is INCORRECT! You will not be '\
                 'able to decrypt any data!' % fname)
-            # Delete any leftover temp files.
-            if not path:
-                dirs = glob.glob(tempfile.gettempdir() + '/' + '__py*__')
-                try:
-                    for dir in dirs: shutil.rmtree(dir)
-                except: pass
             return -1
+
+        # If the path is specified, use it.
+        if path:
+            filename = path + '/' + fname
+        # Else, create a temporary storage area.
+        else:
+            # If no path provided, first delete all temp folders...
+            dirs = glob.glob(tempfile.gettempdir() + '/__py*__')
+            try:
+                for dir in dirs: shutil.rmtree(dir)
+            except:
+                pass
+            # Then, create a temp dir.
+            tmpd = tempfile.mkdtemp('__', '__py')
+            filename = tmpd + '/' + fname
+            del tmpd
 
         w = open(filename, 'wb')
         w.write(self._restoreb(selected_version[0], password))
         w.close() ; del w
         self._log(1, 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti))
 
-        # If execute, call the file, then delete it.
+        # If execute, call the file...
         if execute:
             if os.name=='posix':
-                os.system('gnome-open "%s"' % filename)
+                subprocess.check_output(['xdg-open', filename])
             elif os.name=='nt':
                 os.system('"%s"&exit' % filename)
+            else:
+                raise Exception('System not supported : `%s` !' % os.name)
 
         # Return file hash.
         return selected_version[1]
@@ -633,15 +632,15 @@ class Briefcase:
                 ' \\ / : * ? " < > |')
             return -1
 
-        md4 = MD4.new( fname.lower() )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
-        md4 = MD4.new( new_fname.lower() )
+        md4 = MD4.new(new_fname)
         new_filename = 't'+md4.hexdigest()
         del md4
 
         # Check file existence.
-        if self.c.execute('select file from _files_ where file = ?', [new_fname.lower()]).fetchone():
+        if self.c.execute('select file from _files_ where file = ?', [new_fname]).fetchone():
             self._log(2, 'Func RenFile: there is already a file called "%s"!' % new_fname)
             return -1
 
@@ -664,7 +663,7 @@ class Briefcase:
         This cannot be undone, so be careful. \n\
         '''
         ti = clock()
-        md4 = MD4.new( fname.lower() )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
 
@@ -677,8 +676,8 @@ class Briefcase:
         else:
             try:
                 self.c.execute('drop table %s' % filename)
-                self.c.execute('delete from _files_ where file="%s"' % fname.lower())
-                self.c.execute('delete from _statistics_ where file="%s"' % fname.lower())
+                self.c.execute('delete from _files_ where file="%s"' % fname)
+                self.c.execute('delete from _statistics_ where file="%s"' % fname)
                 self.conn.commit()
                 self._log(1, 'Deleting file "%s" took %.4f sec.' % (fname, clock()-ti))
                 return 0
@@ -697,12 +696,12 @@ class Briefcase:
         On error, it returns an empty dictionary. \n\
         '''
         ti = clock()
-        md4 = MD4.new( fname.lower() )
+        md4 = MD4.new(fname)
         filename = 't'+md4.hexdigest()
         del md4
 
         # Check file existence.
-        if not self.c.execute('select file from _files_ where file = ?', [fname.lower()]).fetchone():
+        if not self.c.execute('select file from _files_ where file = ?', [fname]).fetchone():
             self._log(2, 'Func FileStatistics: there is no such file called "%s"!' % fname)
             return {}
 
@@ -724,11 +723,11 @@ class Briefcase:
         lastFileUser = self.c.execute('select user from %s order by version desc' %
             filename).fetchone()[0]
         labels = self.c.execute('select labels from _files_ where file="%s"' %
-            fname.lower()).fetchone()[0]
+            fname).fetchone()[0]
         versions = len( self.c.execute('select version from %s' % filename).fetchall() )
 
         self.c.execute('insert or replace into _statistics_ (file, size0, size, sizeB, '
-            'date0, date, user0, user, labels) values (?,?,?,?,?,?,?,?,?)', [fname.lower(),
+            'date0, date, user0, user, labels) values (?,?,?,?,?,?,?,?,?)', [fname,
             firstFileSize, lastFileSize, biggestSize, firstFileDate, lastFileDate,
             firstFileUser, lastFileUser, labels])
 
