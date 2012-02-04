@@ -4,7 +4,7 @@
     Briefcase-Project v1.0 \n\
     Copyright (C) 2009-2012, Cristi Constantin. All rights reserved. \n\
     This module contains Briefcase class with all its functions. \n\
-    Tested on Windows XP, Windows 7 and Ubuntu, with Python 2.6/ 2.7. \n\
+    Tested on Windows XP, Windows 7 and Ubuntu, with Python 2. \n\
     External dependencies : Python Crypto. \n\
 '''
 
@@ -26,10 +26,10 @@
 '''
 
 '''
-    In the database, is stored PBKDF2(password=user_password, salt='briefcase', dkLen=16, count=5000).
-    This value is compared with the password typed by the user.
-    For encrypting files, another PBKDF2 is used, with a random salt. The salt will be stored in DB.
-    So, only the password check and the salt are stored.
+    In the database, is stored PBKDF2(password=user_password, salt='briefcase', dkLen=16, count=5000). \n\
+    This value is compared with the password typed by the user. \n\
+    For encrypting files, another PBKDF2 is used, with a random salt. The salt will be stored in DB. \n\
+    So, only the password check and the salt are stored. \n\
 '''
 
 # Standard libraries.
@@ -49,7 +49,7 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r70'
+__version__ = 'r71'
 __all__ = ['Briefcase', '__version__']
 
 #
@@ -247,8 +247,8 @@ class Briefcase:
 
     def SetLabels(self, fname, labels):
         '''
-        Set labels/ tags/ keywords for one filename. Labels can be used to sort and filter files. \n\
-        Labels must be : ";"-separated string, a list, or a tuple. \n\
+        Set labels/ tags/ keywords for one file. Labels can be used to sort and filter files. \n\
+        Labels must be : ";" separated string, a list, or a tuple. \n\
         Any character excepting ";" can be used as label. \n\
         '''
         ti = clock()
