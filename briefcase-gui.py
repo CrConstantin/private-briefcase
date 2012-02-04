@@ -11,6 +11,8 @@
 import os, sys
 import glob
 import shutil
+import tempfile
+import subprocess
 
 # External dependency.
 from briefcase import *
@@ -183,6 +185,7 @@ class MainWindow(QtGui.QMainWindow):
         dlg = CustomDialog(self.centralwidget, 'Create new briefcase file', 'Browse to the '\
             'directory where you want to create the new Briefcase file. You can set a default '\
             'password, but password is optional.', 'Create !')
+
         dlg.exec_()
         dir, pwd, pwd2 = str(dlg.dir.text()), str(dlg.pwd.text()), str(dlg.pwd2.text())
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
@@ -217,10 +220,11 @@ class MainWindow(QtGui.QMainWindow):
 
         dlg.exec_()
         dir, pwd = str(dlg.dir.text()), str(dlg.pwd.text())
+
         if self.default_file and not dlg.result(): sys.exit(0) # If open with ARGS and canceled, exit.
         if not dir or not dlg.result(): return # If no file was selected, or the dialog was canceled.
-        del dlg
         if not pwd: pwd = False # If no password, password is Null.
+        del dlg
 
         if not os.path.exists(dir):
             QtGui.QMessageBox.warning(self.centralwidget, 'Will not Open', '<br>"%s" doesn\'t exist !<br>' % dir)
@@ -274,6 +278,7 @@ class MainWindow(QtGui.QMainWindow):
         dirs = str(dlg.dir.text()).split(';')
         pwd = str(dlg.pwd.text())
         compress = dlg.radioZLIB.isChecked()
+
         if not pwd: pwd = 1 # If password is null, use database default value.
         lbl = str(dlg.lbl.text()) # Labels.
         if not dirs or not dlg.result(): return # If no file was selected, or the dialog was canceled.
@@ -676,11 +681,11 @@ class CustomTab(QtGui.QWidget):
     def on_view(self):
         #
         if type(self.sender()) == type(QtGui.QPushButton()): # If caller is an action.
-            vFile = str(self.sender().objectName())
+            fname = str(self.sender().objectName())
         else: # If caller is a button.
-            vFile = self.buttons_selected
+            fname = self.buttons_selected
 
-        vRes = self.b.ExportFile(vFile, execute=True)
+        vRes = self.b.ExportFile(fname=fname, execute=True)
 
         for i in range(3):
             if vRes != -1: # If password is correct, break.
@@ -688,31 +693,25 @@ class CustomTab(QtGui.QWidget):
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Enter password',
                     'This file requires a password :', QtGui.QLineEdit.Password)
-                qtTxt = str(qtTxt.toUtf8())
+                qtTxt = str(qtTxt)
                 if qtMsg:
-                    vRes = self.b.ExportFile(vFile, qtTxt, execute=True)
+                    vRes = self.b.ExportFile(fname=fname, password=qtTxt, execute=True)
                 else:
                     return
 
         if vRes == -1: # If password is still wrong after 3 tries.
             QtGui.QMessageBox.critical(self, 'Error on view', '<br>Wrong password 3 times !<br>')
-
-        del vFile, vRes
         #
 
 
     def on_edit(self):
         #
-        temp_dir = os.getenv('temp') + '__temp_py__'
-        filename = temp_dir + '/' + self.buttons_selected
-
-        try:
-            os.mkdir(temp_dir)
-        except:
-            print('Cannot create temp file!')
+        fname = self.buttons_selected
+        temp_dir = tempfile.mkdtemp('__', '__py')
+        filename = temp_dir + '/' + fname
 
         # Create temp file and return file hash.
-        old_hash = self.b.ExportFile(fname=self.buttons_selected, path=temp_dir, execute=False)
+        old_hash = self.b.ExportFile(fname=fname, path=temp_dir, execute=False)
 
         for i in range(3):
             if old_hash != -1:
@@ -720,9 +719,9 @@ class CustomTab(QtGui.QWidget):
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Enter password',
                     'This file requires a password :', QtGui.QLineEdit.Password)
-                qtTxt = str(qtTxt.toUtf8())
+                qtTxt = str(qtTxt)
                 if qtMsg:
-                    old_hash = self.b.ExportFile(fname=self.buttons_selected, password=qtTxt, path=temp_dir, execute=False)
+                    old_hash = self.b.ExportFile(fname=fname, password=qtTxt, path=temp_dir, execute=False)
                 else:
                     return
 
@@ -732,27 +731,27 @@ class CustomTab(QtGui.QWidget):
 
         # Execute.
         if os.name=='posix':
-            os.system('gnome-open "%s"' % filename)
+            subprocess.check_output(['xdg-open', filename])
         elif os.name=='nt':
             os.system('"%s"&exit' % filename)
+        else:
+            raise Exception('System not supported : `%s` !' % os.name)
 
         md4 = MD4.new(open(filename, 'rb').read())
-        hash = md4.hexdigest() # New hash.
+        new_hash = md4.hexdigest() # New hash.
         del md4
 
-        if old_hash != hash:
+        if old_hash != new_hash:
             qtMsg = QtGui.QMessageBox.warning(self, 'Save changes ? ...',
-                'File "%s" was changed! Save changes ?' % self.buttons_selected, 'Yes', 'No')
+                'File "%s" was changed! Save changes ?' % fname, 'Yes', 'No')
             if qtMsg == 0: # Clicked yes.
                 self.b.AddFile(filename)
 
         os.remove(filename) # Del file.
-        dirs = glob.glob(os.getenv('temp') + '/' + '__*py*__')
 
+        dirs = glob.glob(tempfile.gettempdir() + '/__py*__')
         try:
-            # Del all temp folders.
-            for dir in dirs:
-                shutil.rmtree(dir)
+            for dir in dirs: shutil.rmtree(dir)
         except:
             pass
         #
@@ -852,7 +851,7 @@ class CustomTab(QtGui.QWidget):
                 <br><b>labels</b> : %(labels)s
                 <br><b>versions</b> : %(versions)i<br>''' % prop)
         else:
-            QtGui.QMessageBox.information(vCurrent, 'Properties for %s' % qtBS, '''
+            QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
                 <br><b>file name</b> : %(fileName)s
                 <br><b>intern name</b> : %(internFileName)s
                 <br><b>first fileSize</b> : %(firstFileSize)i
