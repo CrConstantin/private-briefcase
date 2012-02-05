@@ -9,7 +9,6 @@
 
 # Standard libraries.
 import os, sys
-import glob
 import shutil
 import tempfile
 import subprocess
@@ -572,18 +571,30 @@ class CustomTab(QtGui.QWidget):
         # Setup double click timer. Buttons don't have double click action.
         self.dblClickTimer = QtCore.QTimer()
         self.dblClickTimer.setSingleShot(True)
-        self.dblClickTimer.setInterval(500)
+        self.dblClickTimer.setInterval(250)
 
         self.BUTTON_W = 98
         self.BUTTON_H = 64
 
         self.buttons = {}
         self.buttons_visible = []
+        self.buttons_selected = None
 
         # Populate with icons, each icon represents a file from the Briefcase
         for file_name in self.b.GetFileList():
             vInfo = self.b.FileStatistics(file_name)
             self.create_button(file_name, vInfo['lastFileSize'], vInfo['versions'])
+        #
+
+
+    def closeEvent(self, event):
+        #
+        del self.buttons
+        del self.buttons_visible
+        del self.buttons_selected
+        del self.b
+        #
+        self.close()
         #
 
 
@@ -616,7 +627,8 @@ class CustomTab(QtGui.QWidget):
         	background-position: top center; */
         }
         QPushButton:pressed { border-style: inset; }
-        QPushButton:checked { border: 2px dashed #f33 }''')
+        QPushButton:checked { border: 2px dashed #f33 }
+        QPushButton:disabled { border: 2px dotted #bbb }''')
 
         # Connect events.
         pushButton.clicked.connect(self.on_double_click)
@@ -650,7 +662,24 @@ class CustomTab(QtGui.QWidget):
         This function is used when opening, adding, renaming or deleting buttons.
         '''
 
-        pass
+        # Hide all buttons
+        for vButton in self.buttons:
+            self.buttons[vButton].hide()
+        # Reset layout and visible list
+        self.flowLayout.reset()
+        self.buttons_visible = []
+
+        # Current sort and filter...
+        ssort = str(self.sortCombo.currentText())
+        ffilter = str(self.filterBox.text())
+        if ffilter: ffilter = "file like '%"+ffilter+"%'"
+
+        # Rebuild list of visible buttons.
+        for file_name in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
+            pushButton = self.buttons[file_name]
+            self.buttons_visible.append(pushButton)
+            self.flowLayout.addWidget(pushButton)
+            pushButton.show()
 
 
     def on_double_click(self):
@@ -661,8 +690,12 @@ class CustomTab(QtGui.QWidget):
             return
         # If timer is running and hasn't timed out, the second click occured within timer interval
         else:
+            # Stop timer so next click can start it again
+            self.dblClickTimer.stop()
+            # All buttons become de-selected
+            for vButton in self.buttons:
+                self.buttons[vButton].setChecked(False)
             self.on_view()
-            self.dblClickTimer.stop() # Stop timer so next click can start it again
             return
         #
 
@@ -685,6 +718,7 @@ class CustomTab(QtGui.QWidget):
         else: # If caller is a button.
             fname = self.buttons_selected
 
+        # Briefcase export file cleans-up the temporary file and folder
         vRes = self.b.ExportFile(fname=fname, execute=True)
 
         for i in range(3):
@@ -693,9 +727,8 @@ class CustomTab(QtGui.QWidget):
             else:
                 qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Enter password',
                     'This file requires a password :', QtGui.QLineEdit.Password)
-                qtTxt = str(qtTxt)
                 if qtMsg:
-                    vRes = self.b.ExportFile(fname=fname, password=qtTxt, execute=True)
+                    vRes = self.b.ExportFile(fname=fname, password=str(qtTxt), execute=True)
                 else:
                     return
 
@@ -711,6 +744,7 @@ class CustomTab(QtGui.QWidget):
         filename = temp_dir + '/' + fname
 
         # Create temp file and return file hash.
+        # This is messy, after editing, the temporary files must be destroyed.
         old_hash = self.b.ExportFile(fname=fname, path=temp_dir, execute=False)
 
         for i in range(3):
@@ -735,26 +769,27 @@ class CustomTab(QtGui.QWidget):
         elif os.name=='nt':
             os.system('"%s"&exit' % filename)
         else:
-            raise Exception('System not supported : `%s` !' % os.name)
+            print('System not supported : `%s` !' % os.name)
+            return -1
 
         md4 = MD4.new(open(filename, 'rb').read())
-        new_hash = md4.hexdigest() # New hash.
+        new_hash = md4.hexdigest()
         del md4
 
+        # Compare hashes to see if the file was edited
         if old_hash != new_hash:
             qtMsg = QtGui.QMessageBox.warning(self, 'Save changes ? ...',
                 'File "%s" was changed! Save changes ?' % fname, 'Yes', 'No')
             if qtMsg == 0: # Clicked yes.
                 self.b.AddFile(filename)
 
-        os.remove(filename) # Del file.
+        # Cleanup the mess
+        #destroy_file(filename)
 
-        dirs = glob.glob(tempfile.gettempdir() + '/__py*__')
-        try:
-            for dir in dirs: shutil.rmtree(dir)
-        except:
-            pass
-        #
+        #try:
+        #    shutil.rmtree(temp_dir)
+        #except:
+        #    pass
 
 
     def on_copy(self):
@@ -891,6 +926,11 @@ class FlowLayout(QtGui.QLayout):
         item = self.takeAt(0)
         while item:
             item = self.takeAt(0)
+
+    def reset(self):
+        for item in self.itemList:
+            self.removeWidget(item.widget())
+        self.itemList = []
 
     def addItem(self, item):
         self.itemList.append(item)

@@ -40,6 +40,7 @@ import shutil
 import sqlite3
 import zlib, bz2
 import tempfile
+import thread
 import subprocess
 from time import clock
 from time import strftime
@@ -50,8 +51,8 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r71'
-__all__ = ['Briefcase', '__version__']
+__version__ = 'r73'
+__all__ = ['Briefcase', 'destroy_file', '__version__']
 
 #
 
@@ -70,8 +71,9 @@ def validFileName(fname):
     else:
         return True
 
+
 def validPassword(user_pwd, old_check):
-    # If both are false, the check is OK.
+    # If both are false, the check is OK
     if not user_pwd and not old_check:
         return True
     new_check = PBKDF2(password=user_pwd, salt='briefcase', dkLen=16, count=5000).decode('latin-1')
@@ -79,6 +81,45 @@ def validPassword(user_pwd, old_check):
         return True
     else:
         return False
+
+
+def threaded_execute(filename):
+    '''
+    Executes filename,
+    '''
+    if os.name=='posix':
+        # On Unix systems, the execution is not blocking and will return immediately
+        # So the cleanup must be done manually, by calling "destroy_file".
+        subprocess.call(['xdg-open', filename])
+
+    elif os.name=='nt':
+        # On Windows, the execution is blocking
+        os.system('"%s"&exit' % filename)
+        # After the user closes the file, the file is destroyed
+        destroy_file(filename)
+        # Delete temp file
+        try:
+            shutil.rmtree(os.path.split(filename)[0])
+        except:
+            pass
+
+    else:
+        print('System not supported : `%s` !' % os.name)
+        return -1
+
+    return 0
+
+
+def destroy_file(filename):
+    # Open file in Append mode
+    w = open(filename, 'a+', 0)
+    w.seek(-1, 2)      # Go at the end in the file
+    ovr_len = w.tell() # How many bytes to overwrite
+    w.truncate(0)      # Truncate the file to zero
+    w.write(get_random_bytes(ovr_len))
+    print('Overwritten file `%s`, %i bytes.' % (filename, ovr_len))
+    w.close() ; del w
+    os.remove(filename) # Del file
 
 #
 
@@ -519,18 +560,12 @@ class Briefcase:
                 'able to decrypt any data!' % fname)
             return -1
 
-        # If the path is specified, use it.
+        # If the path is specified, use it
         if path:
             filename = path + '/' + fname
-        # Else, create a temporary storage area.
+        # Else, create a temporary storage area
         else:
-            # If no path provided, first delete all temp folders...
-            dirs = glob.glob(tempfile.gettempdir() + '/__py*__')
-            try:
-                for dir in dirs: shutil.rmtree(dir)
-            except:
-                pass
-            # Then, create a temp dir.
+            # Create a temp dir
             tmpd = tempfile.mkdtemp('__', '__py')
             filename = tmpd + '/' + fname
             del tmpd
@@ -540,14 +575,12 @@ class Briefcase:
         w.close() ; del w
         self._log(1, 'Exporting file "%s" took %.4f sec.' % (fname, clock()-ti))
 
-        # If execute, call the file...
         if execute:
-            if os.name=='posix':
-                subprocess.check_output(['xdg-open', filename])
-            elif os.name=='nt':
-                os.system('"%s"&exit' % filename)
-            else:
-                raise Exception('System not supported : `%s` !' % os.name)
+            # This function will call the file,
+            # Then will overwrite the file,
+            # Then will delete the temp folder, all threaded.
+            # The Export Function here will not block.
+            thread.start_new_thread(threaded_execute, (filename,),)
 
         # Return file hash.
         return selected_version[1]
