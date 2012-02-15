@@ -18,7 +18,7 @@
 
  - keep all your private files in one place, on HDD, in one portable container;
  - each file has its own metadata like: description, tags, etc;
- - files are compressed with zlib 6 or bz2 9 and optionally encrypted with AES 256,
+ - files are compressed with zlib or bz2 and optionally encrypted with AES 256,
    using the global database password, or a separate password;
  - you can add the same file several times. All changes are versioned and you can rollback anytime;
  - files can be added one by one, or multiple at the same time;
@@ -27,7 +27,7 @@
  - clean GUI to add, view, edit, export, version, rename and delete;
  - fast, secure, intuitive;
 
- - website : http://private-briefcase.googlecode.com
+ - website : http://private-briefcase.googlecode.com/
 
 ------------
   Licence:
@@ -56,15 +56,16 @@
   Requirements:
 -----------------
  * Python 2.6 or 2.7. Private-Briefcase is written entirely in Python 2. (www.python.org)
- * Python Crypto. Data is encrypted with AES 256. (www.pycrypto.org)
+ * Python Crypto 2.5. Data is encrypted with AES 256. (www.pycrypto.org)
  * PyQt4. Graphical user interface with Qt. (www.riverbankcomputing.co.uk/software/pyqt/download)
 
 ---------------
   How to use:
 ---------------
- * Graphical user interface can be accesed by opening "briefcase_GUI.py".
+ * Graphical user interface can be accesed by opening "briefcase-gui.py".
  * Alternatively, you can use command line to add, remove, rename or copy files into/ from briefcase files.
  * In order to access Private-Briefcase class, all you have to do is : "import briefcase".
  * A lot of time was spent to document all modules, classes and functions in Private-Briefcase, so enjoy.
- * Note : Private-Briefcase was tested on Windows XP/ Windows 7/ Ubuntu, so there might be a few
+ * Note : Private-Briefcase was tested on Windows and Ubuntu, but there might be a few little
     incompatibilities with other OS-es. Please let me know if you find any.
+
