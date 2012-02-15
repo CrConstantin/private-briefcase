@@ -266,6 +266,7 @@ class MainWindow(QtGui.QMainWindow):
         '''
         Add one or more files in the briefcase.
         '''
+        #QProgressDialog !!!
 
         vCurrent = self.tabWidget.currentWidget() # Current tab.
         dlg = CustomDialog(vCurrent, 'Add files to briefcase', 'Select the files to be '
@@ -298,6 +299,8 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_export(self):
         #
+        #QProgressDialog !!!
+
         vCurrent = self.tabWidget.currentWidget() # Current tab.
         f = QtGui.QFileDialog()
         input = f.getExistingDirectory(vCurrent, 'Select a folder to export into :',
@@ -311,6 +314,8 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_cleanup(self):
         #
+        #QProgressDialog !!!
+
         vCurrent = self.tabWidget.currentWidget() # Current tab.
         qtMsg = QtGui.QMessageBox.warning(vCurrent, 'Cleanup database ? ...',
             'Are you sure you want to cleanup the database ?', 'Yes', 'No')
@@ -538,12 +543,40 @@ class CustomTab(QtGui.QWidget):
         scrollArea.setWidgetResizable(True)
         scrollArea.setWidget(areaWidget)
 
+        # Horizontal layout, at the bottom
+        self.bottomLayout = QtGui.QHBoxLayout()
+        btnSelNan = QtGui.QPushButton('Sel none', self)
+        btnSelNan.clicked.connect(self.selectNan)
+        btnSelAll = QtGui.QPushButton('Sel all', self)
+        btnSelAll.clicked.connect(self.selectAll)
+        btnView = QtGui.QPushButton('View', self)
+        btnEdit = QtGui.QPushButton('Edit', self)
+        btnRenm = QtGui.QPushButton('Rename', self)
+        btnCopy = QtGui.QPushButton('Copy', self)
+        btnDele = QtGui.QPushButton('Delete', self)
+        # Add buttons to buttons list
+        self.btmBtns = []
+        self.btmBtns.append(btnSelNan)
+        self.btmBtns.append(btnSelAll)
+        self.btmBtns.append(btnView)
+        self.btmBtns.append(btnEdit)
+        self.btmBtns.append(btnRenm)
+        self.btmBtns.append(btnCopy)
+        self.btmBtns.append(btnDele)
+
+        # Add buttons to bottom layout, hidden
+        for btnBtm in self.btmBtns:
+            btnBtm.hide()
+            self.bottomLayout.addWidget(btnBtm)
+
         # Insert items in the layout
         self.mainLayout.addWidget(self.filterLabel, 1, 1)
         self.mainLayout.addWidget(self.filterBox, 1, 2)
         self.mainLayout.addWidget(self.sortLabel, 1, 3)
         self.mainLayout.addWidget(self.sortCombo, 1, 4)
         self.mainLayout.addWidget(scrollArea, 2, 1, 4, 4)
+        # Add the bottom layout
+        self.mainLayout.addLayout(self.bottomLayout, 7, 1, 1, 4)
 
         # Button actions.
         actionView = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-View.png')), 'View', self)
@@ -573,12 +606,14 @@ class CustomTab(QtGui.QWidget):
         self.dblClickTimer.setSingleShot(True)
         self.dblClickTimer.setInterval(250)
 
-        self.BUTTON_W = 98
+        self.BUTTON_W = 108
         self.BUTTON_H = 64
 
         self.buttons = {}
         self.buttons_visible = []
-        self.buttons_selected = None
+        self.buttons_selected = []
+        self.button_clicked_old = None
+        self.key_modif = None
 
         # Populate with icons, each icon represents a file from the Briefcase
         for file_name in self.b.GetFileList():
@@ -631,9 +666,9 @@ class CustomTab(QtGui.QWidget):
         QPushButton:disabled { border: 2px dotted #bbb }''')
 
         # Connect events.
-        pushButton.clicked.connect(self.on_double_click)
-        pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        pushButton.customContextMenuRequested.connect(self.on_right_click)
+        pushButton.clicked.connect(self.on_button_click)
+        #pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        #pushButton.customContextMenuRequested.connect(self.on_right_click)
 
         # Save pointer.
         self.buttons[file_name] = pushButton
@@ -654,6 +689,67 @@ class CustomTab(QtGui.QWidget):
         else:                   pushButton.setText(file_name)
         # Tool tip.
         pushButton.setToolTip('<pre>%s<br>Size: %i bytes<br>Versions: %i</pre>' % (file_name, file_size, versions))
+
+
+    def selectAll(self):
+        self.buttons_selected = []
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(True)
+            self.buttons_selected.append(str(self.buttons[vButton].objectName()))
+
+
+    def selectNan(self):
+        self.buttons_selected = []
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(False)
+        for btnBtm in self.btmBtns:
+                btnBtm.hide()
+
+
+    def manageSelection(self, button_clicked):
+        '''
+        Select buttons based on the key press.
+        '''
+        # If Ctrl key is not pressed
+        if self.key_modif != 'ctrl':
+            # All buttons except the current one, become deselected
+            for vButton in self.buttons:
+                if self.buttons[vButton].objectName() != button_clicked:
+                    self.buttons[vButton].setChecked(False)
+            # Reset the list, just one button
+            self.buttons_selected = [button_clicked]
+        else:
+            # For all other keys, append
+            self.buttons_selected.append(button_clicked)
+
+        # If Shift key is pressed
+        if self.key_modif == 'shift':
+            # Must select buttons in the correct order
+            ssort = str(self.sortCombo.currentText())
+            ffilter = str(self.filterBox.text())
+            if ffilter: ffilter = "file like '%"+ffilter+"%'"
+            vSelecting = False
+            self.buttons_selected = []
+
+            # All buttons become selected, starting with the current one
+            for vButton in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
+                btnName = str(self.buttons[vButton].objectName())
+                if vButton == self.button_clicked_old:
+                    vSelecting = True
+                elif vButton == button_clicked:
+                    vSelecting = False
+                    self.buttons_selected.append(btnName)
+                if vSelecting:
+                    self.buttons[vButton].setChecked(True)
+                    self.buttons_selected.append(btnName)
+            del vSelecting
+
+        # If no key is pressed
+        elif not self.key_modif:
+            if self.buttons[button_clicked].isChecked():
+                self.buttons_selected = [button_clicked]
+            else:
+                self.buttons_selected = []
 
 
     def fRefresh(self):
@@ -682,32 +778,76 @@ class CustomTab(QtGui.QWidget):
             pushButton.show()
 
 
-    def on_double_click(self):
+    def keyPressEvent(self, event):
+
+        key = event.key()
+
+        if key == QtCore.Qt.Key_Control:
+            self.key_modif = 'ctrl'
+
+        elif key == QtCore.Qt.Key_Shift:
+            self.key_modif = 'shift'
+
+        else:
+            self.key_modif = None
+            super(CustomTab, self).keyPressEvent(event)
+
+
+    def keyReleaseEvent(self, event):
+        # Release multiple button selection
+        self.key_modif = None
+        super(CustomTab, self).keyReleaseEvent(event)
+
+
+    def on_button_click(self):
         #
+        vPos = self.cursor().pos()
+        # Selected button to string.
+        button_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
+
+        self.manageSelection(button_clicked)
+
         # If after receiving the first click, the timer isn't running, start the timer and return
         if not self.dblClickTimer.isActive():
             self.dblClickTimer.start()
-            return
         # If timer is running and hasn't timed out, the second click occured within timer interval
-        else:
+        elif button_clicked == self.button_clicked_old:
             # Stop timer so next click can start it again
             self.dblClickTimer.stop()
-            # All buttons become de-selected
-            for vButton in self.buttons:
-                self.buttons[vButton].setChecked(False)
+            # Export function
             self.on_view()
-            return
+
+        self.button_clicked_old = button_clicked
+
+        # If items selected, show all buttons
+        if self.buttons_selected:
+            for btnBtm in self.btmBtns:
+                btnBtm.show()
+        else:
+            for btnBtm in self.btmBtns:
+                btnBtm.hide()
+
+        if len(self.buttons_selected) == 1:
+            self.btmBtns[2].setEnabled(True)
+            self.btmBtns[3].setEnabled(True)
+        else:
+            self.btmBtns[2].setEnabled(False)
+            self.btmBtns[3].setEnabled(False)
         #
 
 
     def on_right_click(self):
         #
+        pass
+        #
+        '''
         vPos = self.cursor().pos()
         # Selected button to string.
-        button_selected = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
-        self.buttons_selected = button_selected
+        button_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
+        self.buttons_selected = button_clicked
         # Execute menu.
         self.qtMenu.exec_(vPos)
+        '''
         #
 
 
@@ -716,7 +856,7 @@ class CustomTab(QtGui.QWidget):
         if type(self.sender()) == type(QtGui.QPushButton()): # If caller is an action.
             fname = str(self.sender().objectName())
         else: # If caller is a button.
-            fname = self.buttons_selected
+            fname = self.button_clicked_old
 
         # Briefcase export file cleans-up the temporary file and folder
         vRes = self.b.ExportFile(fname=fname, execute=True)
@@ -739,7 +879,7 @@ class CustomTab(QtGui.QWidget):
 
     def on_edit(self):
         #
-        fname = self.buttons_selected
+        fname = self.button_clicked_old
         temp_dir = tempfile.mkdtemp('__', '__py')
         filename = temp_dir + '/' + fname
 
