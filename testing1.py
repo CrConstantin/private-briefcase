@@ -1,4 +1,4 @@
-#! /usr/local/bin/python
+#!/usr/local/bin/python
 # -*- coding: latin-1 -*-
 
 '''
