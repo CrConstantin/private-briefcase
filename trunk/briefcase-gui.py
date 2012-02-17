@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 # -*- coding: latin-1 -*-
 
 '''
@@ -546,15 +547,21 @@ class CustomTab(QtGui.QWidget):
         # Horizontal layout, at the bottom
         self.bottomLayout = QtGui.QHBoxLayout()
         btnSelNan = QtGui.QPushButton('Sel none', self)
-        btnSelNan.clicked.connect(self.selectNan)
+        btnSelNan.clicked.connect(self.select_nan)
         btnSelAll = QtGui.QPushButton('Sel all', self)
-        btnSelAll.clicked.connect(self.selectAll)
-        btnView = QtGui.QPushButton('View', self)
-        btnEdit = QtGui.QPushButton('Edit', self)
-        btnRenm = QtGui.QPushButton('Rename', self)
-        btnCopy = QtGui.QPushButton('Copy', self)
-        btnDele = QtGui.QPushButton('Delete', self)
-        # Add buttons to buttons list
+        btnSelAll.clicked.connect(self.select_all)
+        btnView = QtGui.QPushButton(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-View.png')), 'View', self)
+        btnView.clicked.connect(self.on_view)
+        btnEdit = QtGui.QPushButton(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Edit.png')), 'Edit', self)
+        btnEdit.clicked.connect(self.on_edit)
+        btnRenm = QtGui.QPushButton(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Rename.png')), 'Rename', self)
+        btnRenm.clicked.connect(self.on_rename)
+        btnCopy = QtGui.QPushButton(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Copy.png')), 'Copy', self)
+        btnCopy.clicked.connect(self.on_copy)
+        btnDele = QtGui.QPushButton(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Delete.png')), 'Delete', self)
+        btnDele.clicked.connect(self.on_delete)
+
+        # Add buttons to buttons list, to be able to hide/ show them later
         self.btmBtns = []
         self.btmBtns.append(btnSelNan)
         self.btmBtns.append(btnSelAll)
@@ -569,37 +576,20 @@ class CustomTab(QtGui.QWidget):
             btnBtm.hide()
             self.bottomLayout.addWidget(btnBtm)
 
+        # Properties area
+        self.propWidget = QtGui.QLabel(self)
+        self.propWidget.setStyleSheet('QLabel {border:1px solid #aaa; padding-top:5px;}')
+        self.propWidget.setMinimumHeight(90)
+        self.propWidget.hide()
+
         # Insert items in the layout
         self.mainLayout.addWidget(self.filterLabel, 1, 1)
         self.mainLayout.addWidget(self.filterBox, 1, 2)
         self.mainLayout.addWidget(self.sortLabel, 1, 3)
         self.mainLayout.addWidget(self.sortCombo, 1, 4)
         self.mainLayout.addWidget(scrollArea, 2, 1, 4, 4)
-        # Add the bottom layout
         self.mainLayout.addLayout(self.bottomLayout, 7, 1, 1, 4)
-
-        # Button actions.
-        actionView = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-View.png')), 'View', self)
-        actionEdit = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Edit.png')), 'Edit', self)
-        actionCopy = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Copy.png')), 'Copy', self)
-        actionDelete = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Delete.png')), 'Delete', self)
-        actionRename = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Rename.png')), 'Rename', self)
-        actionProperties = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/root/Symbols/Symbol-Properties.png')), 'Properties', self)
-
-        # Setup Menu + add Actions.
-        self.qtMenu = QtGui.QMenu()
-        actionView.triggered.connect(self.on_view)
-        self.qtMenu.addAction(actionView)
-        actionEdit.triggered.connect(self.on_edit)
-        self.qtMenu.addAction(actionEdit)
-        actionCopy.triggered.connect(self.on_copy)
-        self.qtMenu.addAction(actionCopy)
-        actionDelete.triggered.connect(self.on_delete)
-        self.qtMenu.addAction(actionDelete)
-        actionRename.triggered.connect(self.on_rename)
-        self.qtMenu.addAction(actionRename)
-        actionProperties.triggered.connect(self.on_properties)
-        self.qtMenu.addAction(actionProperties)
+        self.mainLayout.addWidget(self.propWidget, 8, 1, 1, 4)
 
         # Setup double click timer. Buttons don't have double click action.
         self.dblClickTimer = QtCore.QTimer()
@@ -627,6 +617,8 @@ class CustomTab(QtGui.QWidget):
         del self.buttons
         del self.buttons_visible
         del self.buttons_selected
+        del self.button_clicked_old
+        del self.key_modif
         del self.b
         #
         self.close()
@@ -647,7 +639,6 @@ class CustomTab(QtGui.QWidget):
 
         self.update_button(pushButton, file_name, file_size, versions)
 
-        # Style sheet.
         pushButton.setStyleSheet('''
         QPushButton {
         	border-style: outset;
@@ -665,15 +656,12 @@ class CustomTab(QtGui.QWidget):
         QPushButton:checked { border: 2px dashed #f33 }
         QPushButton:disabled { border: 2px dotted #bbb }''')
 
-        # Connect events.
+        # Connect click event
         pushButton.clicked.connect(self.on_button_click)
-        #pushButton.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        #pushButton.customContextMenuRequested.connect(self.on_right_click)
-
-        # Save pointer.
+        # Save pointer
         self.buttons[file_name] = pushButton
         self.buttons_visible.append(pushButton)
-
+        # Show the button
         self.flowLayout.addWidget(pushButton)
         #
 
@@ -689,67 +677,6 @@ class CustomTab(QtGui.QWidget):
         else:                   pushButton.setText(file_name)
         # Tool tip.
         pushButton.setToolTip('<pre>%s<br>Size: %i bytes<br>Versions: %i</pre>' % (file_name, file_size, versions))
-
-
-    def selectAll(self):
-        self.buttons_selected = []
-        for vButton in self.buttons:
-            self.buttons[vButton].setChecked(True)
-            self.buttons_selected.append(str(self.buttons[vButton].objectName()))
-
-
-    def selectNan(self):
-        self.buttons_selected = []
-        for vButton in self.buttons:
-            self.buttons[vButton].setChecked(False)
-        for btnBtm in self.btmBtns:
-                btnBtm.hide()
-
-
-    def manageSelection(self, button_clicked):
-        '''
-        Select buttons based on the key press.
-        '''
-        # If Ctrl key is not pressed
-        if self.key_modif != 'ctrl':
-            # All buttons except the current one, become deselected
-            for vButton in self.buttons:
-                if self.buttons[vButton].objectName() != button_clicked:
-                    self.buttons[vButton].setChecked(False)
-            # Reset the list, just one button
-            self.buttons_selected = [button_clicked]
-        else:
-            # For all other keys, append
-            self.buttons_selected.append(button_clicked)
-
-        # If Shift key is pressed
-        if self.key_modif == 'shift':
-            # Must select buttons in the correct order
-            ssort = str(self.sortCombo.currentText())
-            ffilter = str(self.filterBox.text())
-            if ffilter: ffilter = "file like '%"+ffilter+"%'"
-            vSelecting = False
-            self.buttons_selected = []
-
-            # All buttons become selected, starting with the current one
-            for vButton in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
-                btnName = str(self.buttons[vButton].objectName())
-                if vButton == self.button_clicked_old:
-                    vSelecting = True
-                elif vButton == button_clicked:
-                    vSelecting = False
-                    self.buttons_selected.append(btnName)
-                if vSelecting:
-                    self.buttons[vButton].setChecked(True)
-                    self.buttons_selected.append(btnName)
-            del vSelecting
-
-        # If no key is pressed
-        elif not self.key_modif:
-            if self.buttons[button_clicked].isChecked():
-                self.buttons_selected = [button_clicked]
-            else:
-                self.buttons_selected = []
 
 
     def fRefresh(self):
@@ -799,13 +726,80 @@ class CustomTab(QtGui.QWidget):
         super(CustomTab, self).keyReleaseEvent(event)
 
 
+    def select_all(self):
+        self.buttons_selected = []
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(True)
+            self.buttons_selected.append(str(self.buttons[vButton].objectName()))
+
+        self.btmBtns[2].setEnabled(False)
+        self.btmBtns[3].setEnabled(False)
+
+
+    def select_nan(self):
+        self.buttons_selected = []
+        self.propWidget.hide()
+        self.propWidget.setText('')
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(False)
+        for btnBtm in self.btmBtns:
+                btnBtm.hide()
+
+
     def on_button_click(self):
         #
         vPos = self.cursor().pos()
         # Selected button to string.
         button_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
 
-        self.manageSelection(button_clicked)
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # Manage key press and selections
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        # If Ctrl key is not pressed
+        if self.key_modif != 'ctrl':
+            # All buttons except the current one, become deselected
+            for vButton in self.buttons:
+                if self.buttons[vButton].objectName() != button_clicked:
+                    self.buttons[vButton].setChecked(False)
+            # Reset the list, just one button
+            self.buttons_selected = [button_clicked]
+        else:
+            # For all other keys, append
+            self.buttons_selected.append(button_clicked)
+
+        # If Shift key is pressed
+        if self.key_modif == 'shift':
+            # Must select buttons in the correct order
+            ssort = str(self.sortCombo.currentText())
+            ffilter = str(self.filterBox.text())
+            if ffilter: ffilter = "file like '%"+ffilter+"%'"
+            vSelecting = False
+            self.buttons_selected = []
+
+            # All buttons become selected, starting with the current one
+            for vButton in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
+                btnName = str(self.buttons[vButton].objectName())
+                if vButton == self.button_clicked_old:
+                    vSelecting = True
+                elif vButton == button_clicked:
+                    vSelecting = False
+                    self.buttons_selected.append(btnName)
+                if vSelecting:
+                    self.buttons[vButton].setChecked(True)
+                    self.buttons_selected.append(btnName)
+            del vSelecting
+
+        # If no key is pressed
+        elif not self.key_modif:
+            if self.buttons[button_clicked].isChecked():
+                self.buttons_selected = [button_clicked]
+            else:
+                self.buttons_selected = []
+
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # Manage click / double click
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
         # If after receiving the first click, the timer isn't running, start the timer and return
         if not self.dblClickTimer.isActive():
@@ -819,44 +813,90 @@ class CustomTab(QtGui.QWidget):
 
         self.button_clicked_old = button_clicked
 
-        # If items selected, show all buttons
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # Show / hide button bar and properties
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
         if self.buttons_selected:
+            self.propWidget.show()
             for btnBtm in self.btmBtns:
                 btnBtm.show()
         else:
+            self.propWidget.hide()
+            self.propWidget.setText('')
             for btnBtm in self.btmBtns:
                 btnBtm.hide()
 
+        # If one item is selected...
         if len(self.buttons_selected) == 1:
             self.btmBtns[2].setEnabled(True)
             self.btmBtns[3].setEnabled(True)
+            prop = self.b.FileStatistics(fname=self.button_clicked_old)
+
+            if not prop:
+                QtGui.QMessageBox.critical(self, 'Error on properties',
+                    '<br>Could not get statistics ! Invalid file name !<br>')
+                return
+
+            if not prop['labels']:
+                prop['labels'] = '-'
+
+            if prop['versions'] == 1:
+                self.propWidget.setText('''
+                    <b>file name</b> : %(fileName)s
+                    <br><b>intern name</b> : %(internFileName)s
+                    <br><b>size</b> : %(lastFileSize)i
+                    <br><b>date</b> : %(lastFileDate)s
+                    <br><b>username</b> : %(lastFileUser)s
+                    <br><b>labels</b> : %(labels)s
+                    <br><b>versions</b> : %(versions)i<br>''' % prop)
+            else:
+                self.propWidget.setText('''
+                    <b>file name</b> : %(fileName)s
+                    <br><b>intern name</b> : %(internFileName)s
+                    <br><b>first fileSize</b> : %(firstFileSize)i
+                    <br><b>last fileSize</b> : %(lastFileSize)i
+                    <br><b>largest size</b> : %(biggestSize)i
+                    <br><b>first fileDate</b> : %(firstFileDate)s
+                    <br><b>last fileDate</b> : %(lastFileDate)s
+                    <br><b>first fileUser</b> : %(firstFileUser)s
+                    <br><b>last fileUser</b> : %(lastFileUser)s
+                    <br><b>labels</b> : %(labels)s
+                    <br><b>versions</b> : %(versions)i<br>''' % prop)
+
+        # If more items are selected...
         else:
             self.btmBtns[2].setEnabled(False)
             self.btmBtns[3].setEnabled(False)
-        #
+            props = {}
 
+            for fname in self.buttons_selected:
+                prop = self.b.FileStatistics(fname=fname)
 
-    def on_right_click(self):
-        #
-        pass
-        #
-        '''
-        vPos = self.cursor().pos()
-        # Selected button to string.
-        button_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
-        self.buttons_selected = button_clicked
-        # Execute menu.
-        self.qtMenu.exec_(vPos)
-        '''
+                if not prop:
+                    QtGui.QMessageBox.critical(self, 'Error on properties',
+                        '<br>Could not get statistics ! Invalid file name !<br>')
+                    return
+
+                if not prop['labels']:
+                    prop['labels'] = '-'
+
+                props[fname] = prop
+
+            labels = '; '.join(props[e]['labels'] for e in props)
+            labels = '; '.join( list(set(e.strip() for e in labels.split(';'))) )
+
+            self.propWidget.setText( '''
+                <b>selected files</b> : %i
+                <br><b>total size</b> : %i
+                <br><b>all labels</b> : %s<br>''' % \
+                (len(props), sum(props[e]['lastFileSize'] for e in props), labels) )
         #
 
 
     def on_view(self):
         #
-        if type(self.sender()) == type(QtGui.QPushButton()): # If caller is an action.
-            fname = str(self.sender().objectName())
-        else: # If caller is a button.
-            fname = self.button_clicked_old
+        fname = self.button_clicked_old
 
         # Briefcase export file cleans-up the temporary file and folder
         vRes = self.b.ExportFile(fname=fname, execute=True)
@@ -934,112 +974,83 @@ class CustomTab(QtGui.QWidget):
 
     def on_copy(self):
         #
-        qtBS = self.buttons_selected # Selected button.
-        qtMsg = QtGui.QMessageBox.question(self, 'Copy file ? ...',
-            'Are you sure you want to copy "%s" ?' % qtBS, 'Yes', 'No')
+        q = QtGui.QMessageBox.question(self,
+            'Copy %i file(s) ? ...' % len(self.buttons_selected),
+            'Are you sure you want to copy %i file(s) ?' % len(self.buttons_selected),
+            'Yes', 'No')
 
-        if qtMsg == 0: # Clicked yes.
-            ret = self.b.CopyIntoNew(fname=qtBS, version=0, new_fname='copy of '+qtBS)
-            if ret == 0: # If Briefcase returns 0, create new button.
-                vInfo = self.b.FileStatistics(qtBS)
-                self.create_button('copy of ' + qtBS, vInfo['lastFileSize'], vInfo['versions'])
-                self.fRefresh()
-            else:
-                QtGui.QMessageBox.critical(self, 'Error on copy',
-                    '<br>Could not copy file ! Invalid file name, or file name exists !<br>')
+        # If clicked yes...
+        if q == 0:
+            # Copy each item.
+            for fname in self.buttons_selected:
+                ret = self.b.CopyIntoNew(fname=fname, version=0, new_fname='copy of '+fname)
 
-        del qtBS, qtMsg
+                if ret == 0: # If Briefcase returns 0, create new button.
+                    vInfo = self.b.FileStatistics(fname)
+                    self.create_button('copy of ' + fname, vInfo['lastFileSize'], vInfo['versions'])
+                    self.fRefresh()
+                else:
+                    QtGui.QMessageBox.critical(self, 'Error on copy',
+                        '<br>Could not copy file ! Invalid file name, or the copy exists already !<br>')
         #
 
 
     def on_delete(self):
         #
-        qtBS = self.buttons_selected # Selected button.
-        qtMsg = QtGui.QMessageBox.warning(self, 'Delete file ? ...',
-            'Are you sure you want to delete "%s" ?' % qtBS, 'Yes', 'No')
+        q = QtGui.QMessageBox.warning(self,
+            'Delete %i file(s) ? ...' % len(self.buttons_selected),
+            'Are you sure you want to delete %i file(s) ?' % len(self.buttons_selected),
+            'Yes', 'No')
 
-        if qtMsg == 0: # Clicked yes.
-            ret = self.b.DelFile(fname=qtBS, version=0)
-            if ret == 0: # If Briefcase returns 0, delete the button.
-                self.buttons[qtBS].close()
-                del self.buttons[qtBS]
-                self.fRefresh()
-            else:
-                QtGui.QMessageBox.critical(self, 'Error on delete',
-                    '<br>Could not delete file ! Invalid file name !<br>')
+        # If clicked yes...
+        if q == 0:
+            # Delete each selected item
+            for fname in self.buttons_selected:
+                ret = self.b.DelFile(fname=fname, version=0)
 
-        del qtBS, qtMsg
+                if ret == 0: # If Briefcase returns 0, delete the button.
+                    self.buttons[fname].close()
+                    del self.buttons[fname]
+                    self.fRefresh()
+                else:
+                    QtGui.QMessageBox.critical(self, 'Error on delete',
+                        '<br>Could not delete file ! Invalid file name !<br>')
+            # All files must be de-selected
+            self.select_nan()
         #
 
 
     def on_rename(self):
         #
-        qtBS = self.buttons_selected # Selected button.
-        qtTxt, qtMsg = QtGui.QInputDialog.getText(self, 'Rename file ? ...',
-            'New name :', QtGui.QLineEdit.Normal, qtBS)
+        qText, q = QtGui.QInputDialog.getText(self,
+            'Rename %i file(s) ? ...' % len(self.buttons_selected),
+            'This name + item number will be added for each file.\n\nNew name :',
+            QtGui.QLineEdit.Normal, '...')
 
         # Text becomes Lower Python String.
-        qtTxt = str(qtTxt.toUtf8())
+        qText = str(qText.toUtf8())
 
-        if qtMsg and qtTxt: # Clicked yes and text exists.
-            # Call Briefcase Rename function.
-            ret = self.b.RenFile(fname=qtBS, new_fname=qtTxt)
+        # If clicked yes and text exists...
+        if q and qText:
+            # Rename each item.
+            for i in range(len(self.buttons_selected)):
 
-            if ret == 0:
+                fname = self.buttons_selected[i]
+                numbr = str(i+1).rjust(len(str(len(self.buttons_selected))), '0')
+                ret = self.b.RenFile(fname=fname, new_fname='%s [%s]' % (qText, numbr))
 
-                vInfo = self.b.FileStatistics(qtTxt)
-                # If Briefcase returns 0, button text and info.
-                self.update_button(self.buttons[qtBS], qtTxt, vInfo['lastFileSize'], vInfo['versions'])
-                # Pass the pointer to the new name.
-                self.buttons[qtTxt] = self.buttons[qtBS]
-                del self.buttons[qtBS]
-                self.fRefresh()
+                if ret == 0:
+                    vInfo = self.b.FileStatistics(qText)
+                    # If Briefcase returns 0, button text and info.
+                    self.update_button(self.buttons[fname], qText, vInfo['lastFileSize'], vInfo['versions'])
+                    # Pass the pointer to the new name.
+                    self.buttons[qText] = self.buttons[fname]
+                    del self.buttons[fname]
+                    self.fRefresh()
 
-            else:
-                QtGui.QMessageBox.critical(self, 'Error on rename',
-                    '<br>Could not rename file ! Invalid file name, or file name exists !<br>')
-
-        del qtBS, qtTxt, qtMsg
-        #
-
-
-    def on_properties(self):
-        #
-        qtBS = self.buttons_selected # Selected button.
-        prop = self.b.FileStatistics(fname=qtBS)
-
-        if not prop:
-            QtGui.QMessageBox.critical(self, 'Error on properties',
-                '<br>Could not get statistics ! Invalid file name !<br>')
-            return
-
-        if not prop['labels']:
-            prop['labels'] = '-'
-
-        if prop['versions'] == 1:
-            QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
-                <br><b>file name</b> : %(fileName)s
-                <br><b>intern name</b> : %(internFileName)s
-                <br><b>size</b> : %(lastFileSize)i
-                <br><b>date</b> : %(lastFileDate)s
-                <br><b>username</b> : %(lastFileUser)s
-                <br><b>labels</b> : %(labels)s
-                <br><b>versions</b> : %(versions)i<br>''' % prop)
-        else:
-            QtGui.QMessageBox.information(self, 'Properties for %s' % qtBS, '''
-                <br><b>file name</b> : %(fileName)s
-                <br><b>intern name</b> : %(internFileName)s
-                <br><b>first fileSize</b> : %(firstFileSize)i
-                <br><b>last fileSize</b> : %(lastFileSize)i
-                <br><b>largest size</b> : %(biggestSize)i
-                <br><b>first fileDate</b> : %(firstFileDate)s
-                <br><b>last fileDate</b> : %(lastFileDate)s
-                <br><b>first fileUser</b> : %(firstFileUser)s
-                <br><b>last fileUser</b> : %(lastFileUser)s
-                <br><b>labels</b> : %(labels)s
-                <br><b>versions</b> : %(versions)i<br>''' % prop)
-
-        del qtBS, prop
+                else:
+                    QtGui.QMessageBox.critical(self, 'Error on rename',
+                        '<br>Could not rename file ! Invalid file name, or file name exists !<br>')
         #
 
 
