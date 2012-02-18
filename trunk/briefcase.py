@@ -51,7 +51,7 @@ from Crypto.Hash import MD4
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-__version__ = 'r75'
+__version__ = 'r77'
 __all__ = ['Briefcase', 'destroy_file', '__version__']
 
 #

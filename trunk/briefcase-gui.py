@@ -578,8 +578,7 @@ class CustomTab(QtGui.QWidget):
 
         # Properties area
         self.propWidget = QtGui.QLabel(self)
-        self.propWidget.setStyleSheet('QLabel {border:1px solid #aaa; padding-top:5px;}')
-        self.propWidget.setMinimumHeight(90)
+        self.propWidget.setStyleSheet('QLabel {border:1px solid #aaa;padding-top:5px;padding-bottom:5px;}')
         self.propWidget.hide()
 
         # Insert items in the layout
@@ -602,7 +601,7 @@ class CustomTab(QtGui.QWidget):
         self.buttons = {}
         self.buttons_visible = []
         self.buttons_selected = []
-        self.button_clicked_old = None
+        self.item_clicked_old = None
         self.key_modif = None
 
         # Populate with icons, each icon represents a file from the Briefcase
@@ -617,7 +616,7 @@ class CustomTab(QtGui.QWidget):
         del self.buttons
         del self.buttons_visible
         del self.buttons_selected
-        del self.button_clicked_old
+        del self.item_clicked_old
         del self.key_modif
         del self.b
         #
@@ -660,7 +659,7 @@ class CustomTab(QtGui.QWidget):
         pushButton.clicked.connect(self.on_button_click)
         # Save pointer
         self.buttons[file_name] = pushButton
-        self.buttons_visible.append(pushButton)
+        self.buttons_visible.append(file_name)
         # Show the button
         self.flowLayout.addWidget(pushButton)
         #
@@ -700,7 +699,7 @@ class CustomTab(QtGui.QWidget):
         # Rebuild list of visible buttons.
         for file_name in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
             pushButton = self.buttons[file_name]
-            self.buttons_visible.append(pushButton)
+            self.buttons_visible.append(file_name)
             self.flowLayout.addWidget(pushButton)
             pushButton.show()
 
@@ -726,112 +725,28 @@ class CustomTab(QtGui.QWidget):
         super(CustomTab, self).keyReleaseEvent(event)
 
 
-    def select_all(self):
-        self.buttons_selected = []
-        for vButton in self.buttons:
-            self.buttons[vButton].setChecked(True)
-            self.buttons_selected.append(str(self.buttons[vButton].objectName()))
+    def manage_selection(self):
+        '''
+        Show / hide button bar and properties
+        '''
 
-        self.btmBtns[2].setEnabled(False)
-        self.btmBtns[3].setEnabled(False)
-
-
-    def select_nan(self):
-        self.buttons_selected = []
-        self.propWidget.hide()
-        self.propWidget.setText('')
-        for vButton in self.buttons:
-            self.buttons[vButton].setChecked(False)
-        for btnBtm in self.btmBtns:
-                btnBtm.hide()
-
-
-    def on_button_click(self):
-        #
-        vPos = self.cursor().pos()
-        # Selected button to string.
-        button_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
-
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # Manage key press and selections
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-        # If Ctrl key is not pressed
-        if self.key_modif != 'ctrl':
-            # All buttons except the current one, become deselected
-            for vButton in self.buttons:
-                if self.buttons[vButton].objectName() != button_clicked:
-                    self.buttons[vButton].setChecked(False)
-            # Reset the list, just one button
-            self.buttons_selected = [button_clicked]
-        else:
-            # For all other keys, append
-            self.buttons_selected.append(button_clicked)
-
-        # If Shift key is pressed
-        if self.key_modif == 'shift':
-            # Must select buttons in the correct order
-            ssort = str(self.sortCombo.currentText())
-            ffilter = str(self.filterBox.text())
-            if ffilter: ffilter = "file like '%"+ffilter+"%'"
-            vSelecting = False
-            self.buttons_selected = []
-
-            # All buttons become selected, starting with the current one
-            for vButton in self.b.GetFileList(ssort=ssort, ffilter=ffilter):
-                btnName = str(self.buttons[vButton].objectName())
-                if vButton == self.button_clicked_old:
-                    vSelecting = True
-                elif vButton == button_clicked:
-                    vSelecting = False
-                    self.buttons_selected.append(btnName)
-                if vSelecting:
-                    self.buttons[vButton].setChecked(True)
-                    self.buttons_selected.append(btnName)
-            del vSelecting
-
-        # If no key is pressed
-        elif not self.key_modif:
-            if self.buttons[button_clicked].isChecked():
-                self.buttons_selected = [button_clicked]
-            else:
-                self.buttons_selected = []
-
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # Manage click / double click
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-        # If after receiving the first click, the timer isn't running, start the timer and return
-        if not self.dblClickTimer.isActive():
-            self.dblClickTimer.start()
-        # If timer is running and hasn't timed out, the second click occured within timer interval
-        elif button_clicked == self.button_clicked_old:
-            # Stop timer so next click can start it again
-            self.dblClickTimer.stop()
-            # Export function
-            self.on_view()
-
-        self.button_clicked_old = button_clicked
-
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        # Show / hide button bar and properties
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
+        # When at least one item is selected, show the bottom area
         if self.buttons_selected:
             self.propWidget.show()
             for btnBtm in self.btmBtns:
                 btnBtm.show()
+        # Else, hide the bottom area
         else:
             self.propWidget.hide()
             self.propWidget.setText('')
             for btnBtm in self.btmBtns:
                 btnBtm.hide()
 
-        # If one item is selected...
+        # When a single item is selected...
         if len(self.buttons_selected) == 1:
             self.btmBtns[2].setEnabled(True)
             self.btmBtns[3].setEnabled(True)
-            prop = self.b.FileStatistics(fname=self.button_clicked_old)
+            prop = self.b.FileStatistics(fname=self.buttons_selected[0])
 
             if not prop:
                 QtGui.QMessageBox.critical(self, 'Error on properties',
@@ -845,26 +760,26 @@ class CustomTab(QtGui.QWidget):
                 self.propWidget.setText('''
                     <b>file name</b> : %(fileName)s
                     <br><b>intern name</b> : %(internFileName)s
-                    <br><b>size</b> : %(lastFileSize)i
+                    <br><b>size</b> : %(lastFileSize)i bytes
                     <br><b>date</b> : %(lastFileDate)s
                     <br><b>username</b> : %(lastFileUser)s
                     <br><b>labels</b> : %(labels)s
-                    <br><b>versions</b> : %(versions)i<br>''' % prop)
+                    <br><b>versions</b> : %(versions)i''' % prop)
             else:
                 self.propWidget.setText('''
                     <b>file name</b> : %(fileName)s
                     <br><b>intern name</b> : %(internFileName)s
-                    <br><b>first fileSize</b> : %(firstFileSize)i
-                    <br><b>last fileSize</b> : %(lastFileSize)i
-                    <br><b>largest size</b> : %(biggestSize)i
+                    <br><b>first fileSize</b> : %(firstFileSize)i bytes
+                    <br><b>last fileSize</b> : %(lastFileSize)i bytes
+                    <br><b>largest size</b> : %(biggestSize)i bytes
                     <br><b>first fileDate</b> : %(firstFileDate)s
                     <br><b>last fileDate</b> : %(lastFileDate)s
                     <br><b>first fileUser</b> : %(firstFileUser)s
                     <br><b>last fileUser</b> : %(lastFileUser)s
                     <br><b>labels</b> : %(labels)s
-                    <br><b>versions</b> : %(versions)i<br>''' % prop)
+                    <br><b>versions</b> : %(versions)i''' % prop)
 
-        # If more items are selected...
+        # When more items are selected...
         else:
             self.btmBtns[2].setEnabled(False)
             self.btmBtns[3].setEnabled(False)
@@ -888,15 +803,112 @@ class CustomTab(QtGui.QWidget):
 
             self.propWidget.setText( '''
                 <b>selected files</b> : %i
-                <br><b>total size</b> : %i
-                <br><b>all labels</b> : %s<br>''' % \
+                <br><b>total size</b> : %i bytes
+                <br><b>all labels</b> : %s''' % \
                 (len(props), sum(props[e]['lastFileSize'] for e in props), labels) )
+
+
+    def select_all(self):
+        self.buttons_selected = []
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(True)
+            self.buttons_selected.append(str(self.buttons[vButton].objectName()))
+        self.manage_selection()
+
+
+    def select_nan(self):
+        self.buttons_selected = []
+        for vButton in self.buttons:
+            self.buttons[vButton].setChecked(False)
+        self.manage_selection()
+
+
+    def on_button_click(self):
         #
+        vPos = self.cursor().pos()
+        # Selected item name, to string
+        item_clicked = str(self.childAt(self.mapFromGlobal(vPos)).objectName())
+
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # Manage key press and selections
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        # If Ctrl key is not pressed
+        if self.key_modif != 'ctrl':
+            # All buttons except the current one, become deselected
+            for item in self.buttons:
+                if self.buttons[item].objectName() != item_clicked:
+                    self.buttons[item].setChecked(False)
+            # Reset the list, just one button
+            self.buttons_selected = [item_clicked]
+        else:
+            # For all other keys
+            if self.buttons[item_clicked].isChecked():
+                self.buttons_selected.append(item_clicked)
+            else:
+                index = self.buttons_selected.index(item_clicked)
+                self.buttons_selected.pop(index)
+
+        # If Shift key is pressed
+        if self.key_modif == 'shift':
+            # Must select buttons in the correct order
+            ssort = str(self.sortCombo.currentText())
+            ffilter = str(self.filterBox.text())
+            if ffilter: ffilter = "file like '%"+ffilter+"%'"
+            items_list = self.b.GetFileList(ssort=ssort, ffilter=ffilter)
+
+            vSelecting = False
+            self.buttons_selected = []
+            index = self.buttons_visible.index(item_clicked)
+            index_old = self.buttons_visible.index(self.item_clicked_old)
+
+            # If the new selected item is at the left of the old item
+            if index < index_old:
+                # The item list will be cycled in reversed order
+                items_list.reverse()
+
+            # All buttons become selected, starting with the current one
+            for item in items_list:
+                btnName = str(self.buttons[item].objectName())
+                if item == self.item_clicked_old:
+                    vSelecting = True
+                elif item == item_clicked:
+                    vSelecting = False
+                    self.buttons_selected.append(btnName)
+                if vSelecting:
+                    self.buttons[item].setChecked(True)
+                    self.buttons_selected.append(btnName)
+            del vSelecting
+
+        # If no key is pressed
+        elif not self.key_modif:
+            if self.buttons[item_clicked].isChecked():
+                self.buttons_selected = [item_clicked]
+            else:
+                self.buttons_selected = []
+
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        # Manage click / double click
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        # If after receiving the first click, the timer isn't running, start the timer and return
+        if not self.dblClickTimer.isActive():
+            self.dblClickTimer.start()
+        # If timer is running and hasn't timed out, the second click occured within timer interval
+        elif item_clicked == self.item_clicked_old:
+            # Stop timer so next click can start it again
+            self.dblClickTimer.stop()
+            # Export function
+            self.on_view()
+
+        self.item_clicked_old = item_clicked
+
+        self.manage_selection()
 
 
     def on_view(self):
         #
-        fname = self.button_clicked_old
+        fname = self.item_clicked_old
 
         # Briefcase export file cleans-up the temporary file and folder
         vRes = self.b.ExportFile(fname=fname, execute=True)
@@ -919,7 +931,7 @@ class CustomTab(QtGui.QWidget):
 
     def on_edit(self):
         #
-        fname = self.button_clicked_old
+        fname = self.item_clicked_old
         temp_dir = tempfile.mkdtemp('__', '__py')
         filename = temp_dir + '/' + fname
 
@@ -1037,14 +1049,15 @@ class CustomTab(QtGui.QWidget):
 
                 fname = self.buttons_selected[i]
                 numbr = str(i+1).rjust(len(str(len(self.buttons_selected))), '0')
-                ret = self.b.RenFile(fname=fname, new_fname='%s [%s]' % (qText, numbr))
+                new_fname = '%s [%s]' % (qText, numbr)
+                ret = self.b.RenFile(fname=fname, new_fname=new_fname)
 
                 if ret == 0:
-                    vInfo = self.b.FileStatistics(qText)
-                    # If Briefcase returns 0, button text and info.
-                    self.update_button(self.buttons[fname], qText, vInfo['lastFileSize'], vInfo['versions'])
-                    # Pass the pointer to the new name.
-                    self.buttons[qText] = self.buttons[fname]
+                    vInfo = self.b.FileStatistics(new_fname)
+                    # If Briefcase returns 0, button text and info
+                    self.update_button(self.buttons[fname], new_fname, vInfo['lastFileSize'], vInfo['versions'])
+                    # Pass the pointer to the new name
+                    self.buttons[new_fname] = self.buttons[fname]
                     del self.buttons[fname]
                     self.fRefresh()
 
