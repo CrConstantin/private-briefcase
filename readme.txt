@@ -16,6 +16,8 @@
   About:
 ----------
 
+ - THIS PROJECT IS NO LONGER MAINTAINED. THE SOURCE IS HERE JUST FOR INSPIRATION.
+ 
  - keep all your private files in one place, on HDD, in one portable container;
  - each file has its own metadata like: description, tags, etc;
  - files are compressed with zlib or bz2 and optionally encrypted with AES 256,
@@ -32,7 +34,7 @@
 ------------
   Licence:
 ------------
-  Private-Briefcase is copyright © 2010-2012, Cristi Constantin. All rights reserved.
+  Private-Briefcase is copyright Â© 2010-2012, Cristi Constantin. All rights reserved.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
